@@ -1,37 +1,45 @@
 {
-  "name": "video-processor",
-  "private": true,
-  "packageManager": "pnpm@9.15.4",
-  "scripts": {
-    "dev": "pnpm --filter @video-processor/shared build && docker compose -f apps/backend/docker-compose.yml up -d && pnpm --filter backend db:push && pnpm --filter @video-processor/webapp --filter backend --parallel run dev",
-    "test": "pnpm --filter backend test:unit",
-    "test:integration": "INTEGRATION_TEST=true pnpm --filter backend test:integration",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
-    "typecheck": "pnpm --filter @video-processor/shared build && pnpm -r run typecheck",
-    "db:generate": "pnpm --filter backend db:generate",
-    "knip": "knip",
-    "postinstall": "simple-git-hooks",
-    "build:stg": "cd infrastructure/terraform && ./deploy.sh stg build",
-    "build:prod": "cd infrastructure/terraform && ./deploy.sh prod build",
-    "deploy:stg": "cd infrastructure/terraform && ./deploy.sh stg apply",
-    "deploy:prod": "cd infrastructure/terraform && ./deploy.sh prod apply",
-    "deploy:stg:full": "cd infrastructure/terraform && ./deploy.sh stg full",
-    "deploy:prod:full": "cd infrastructure/terraform && ./deploy.sh prod full"
-  },
-  "simple-git-hooks": {
-    "pre-commit": "pnpm lint-staged",
-    "pre-push": "pnpm lint && pnpm typecheck"
-  },
-  "lint-staged": {
-    "*.{js,ts,jsx,tsx,json}": "biome check --write"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "knip": "^5.82.1",
-    "lint-staged": "^16.2.7",
-    "simple-git-hooks": "^2.13.1",
-    "typescript": "^5.7.3"
-  }
+	"name": "product-starter",
+	"private": true,
+	"packageManager": "pnpm@10.18.1",
+	"scripts": {
+		"dev": "pnpm --filter webapp dev",
+		"build": "pnpm --filter webapp build",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"typecheck": "pnpm --filter webapp typecheck",
+		"verify": "pnpm lint && pnpm --filter webapp prisma generate && pnpm typecheck && pnpm test:unit && pnpm depcruise",
+		"test:unit": "pnpm --filter webapp test:unit",
+		"test:integration": "pnpm --filter webapp test:integration",
+		"depcruise": "pnpm --filter webapp depcruise",
+		"knip": "knip",
+		"db:seed": "pnpm --filter webapp prisma db seed",
+		"db:reset": "pnpm --filter webapp prisma migrate reset",
+		"db:migrate": "pnpm --filter webapp prisma migrate dev",
+		"prepare": "simple-git-hooks"
+	},
+	"simple-git-hooks": {
+		"pre-commit": "pnpm lint:fix",
+		"pre-push": "pnpm verify"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9",
+		"knip": "^5.85.0",
+		"simple-git-hooks": "^2.13.1",
+		"supabase": "^2.81.3",
+		"vercel": "^50.33.1"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"@biomejs/biome",
+			"@prisma/client",
+			"@prisma/engines",
+			"esbuild",
+			"prisma",
+			"sharp",
+			"simple-git-hooks",
+			"supabase"
+		],
+		"ignoredBuiltDependencies": ["supabase"]
+	}
 }

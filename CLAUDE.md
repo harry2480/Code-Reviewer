@@ -1,110 +1,93 @@
-# CLAUDE.md
+# Product Starter
 
-video-processor: Google Drive動画をAIで分析し、ショート動画に自動切り抜きするツール
+## 使い方（利用者向け）
 
-## Quick Reference
+- `pnpm dev` で開発サーバーを起動
+- `pnpm verify` で品質チェック（変更後に実行）
+- 機能を追加したいときは Claude Code に「〇〇な機能を作って」と指示するだけでOK
+- テーブルを追加したいときは「〇〇テーブルを追加して」と指示
+- UIを作りたいときは「〇〇な画面を作って」と指示
+- エラーが出たらエラーメッセージを貼り付けて「直して」と指示
 
-```bash
-# 開発
-pnpm dev              # frontend + backend 同時起動
-pnpm lint             # Biomeでlint
-pnpm lint:fix         # lint + 自動修正
-pnpm typecheck        # TypeScript型チェック
+### コマンド一覧
 
-# Backend (apps/backend)
-pnpm --filter backend test:unit         # ユニットテスト
-pnpm --filter backend test:integration  # 統合テスト (要DB)
-pnpm --filter backend db:studio         # Prisma Studio
-
-# Frontend (apps/webapp)
-pnpm --filter @video-processor/webapp test:e2e  # Playwright E2E
+```sh
+pnpm dev               # 開発サーバー起動
+pnpm verify            # lint → prisma generate → typecheck → unit test → depcruise
+pnpm test:unit         # Unit テスト
+pnpm test:integration  # Integration テスト（要 DATABASE_URL, INTEGRATION_TEST=true）
+pnpm lint:fix          # 自動フォーマット
+pnpm db:migrate        # DBマイグレーション作成・適用
+pnpm knip              # 未使用コード検出
 ```
 
-## Architecture
+---
 
-pnpm monorepo構成:
-- `apps/webapp` - Next.js (App Router) + shadcn/ui + Tailwind
-- `apps/backend` - Express + Prisma + DDD構成
-- `apps/shared` - 共通型定義
+## Claude Code への指示（利用者は読まなくてOK）
 
-### Backend Bounded Contexts
+### アーキテクチャ
 
-`apps/backend/src/contexts/` に複数のBCが存在:
-- `clip-video` - 動画クリップ切り出し機能
-- `shorts-gen` - ショート動画生成機能
-- `shared` - BC間共有コード
+pnpm workspace monorepo。`apps/webapp/` に Next.js 15 App Router アプリ。
 
-### Backend DDD Layers (各BC内)
+バックエンド (`src/backend/`) は DDD 4層構造:
 
 ```
-presentation/  → routes, middleware (薄く保つ)
-application/   → usecases, services (throw errors)
-domain/        → models, services, gateways (Result型で表現)
-infrastructure/→ repositories, clients (throw errors)
+依存方向: presentation → application → domain ← infrastructure
 ```
 
-詳細: [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md)
+- **domain** — ビジネスルール。外部依存なし。最内層
+- **application** — UseCase。domain のみ依存（infrastructure 直接参照禁止、Gateway interface 経由）
+- **infrastructure** — Gateway/Repository 実装。domain の interface を implements
+- **presentation** — composition（唯一の DI ポイント、全層参照可）、loaders（読み取り）、actions（副作用）
 
-## Coding Standards
+### ファイル配置ルール
 
-- **Formatter/Linter**: Biome (single quotes, semicolons, 2 spaces)
-- **Domain層エラー**: Result型 `{ success: true, value } | { success: false, error }`
-- **他層エラー**: throw → presentation層でハンドリング
-- **テスト**: domain/application → unit, infrastructure → integration, webapp → e2e
+```
+src/backend/
+├── domain/
+│   ├── models/          # ドメインモデル (.model.ts)
+│   ├── services/        # ドメインサービス (.service.ts)
+│   ├── gateways/        # Gateway interface (.gateway.ts)
+│   └── repositories/    # Repository interface (.repository.ts)
+├── application/
+│   └── usecases/        # UseCase (.usecase.ts)
+├── infrastructure/
+│   ├── adapters/        # Gateway 実装 (.adapter.ts) — 本番 + Stub
+│   ├── repositories/    # Repository 実装 (.repository.ts)
+│   └── db/              # DB接続 (prisma-client.ts)
+└── presentation/
+    ├── composition/     # DI組み立て (.composition.ts)
+    ├── loaders/         # データ取得 (.loader.ts)
+    └── actions/         # 副作用 (.action.ts, 'use server')
+```
 
-## Git Hooks
+### Key Rules
 
-- **pre-push hook**: lint, typecheckが自動実行される
-- **失敗時の対応**: hookエラーはスキップせず必ず修正する
-  - 作業に直接関係ないエラーでも修正対象
-  - あまりにも複雑な場合のみ質問する
-  - `--no-verify`でのスキップは原則禁止
+- ファイル命名: kebab-case + レイヤーサフィックス
+- Rich Domain Model 必須。バリデーション・生成はモデル自身のメソッドで行う
+- サービス（UseCase, Domain Service）はクラスベース + コンストラクタ DI。関数エクスポート禁止
+- Domain 層のエラーは `Result<T, E>` 型で返す。Application/Infrastructure は throw
+- 外部 API の Gateway は必ず Stub 実装を用意し、Composition で環境変数に応じて切り替え
+- `index.ts` バレルエクスポート禁止
+- API Route 原則不使用（loaders + Server Actions パターン）
+- Server Component デフォルト。`'use client'` は必要な場合のみ
 
-## Test Guidelines
+### テスト
 
-| Layer | Test Type | Command |
-|-------|-----------|---------|
-| domain, application | unit (mock) | `pnpm --filter backend test:unit` |
-| infrastructure | integration | `pnpm --filter backend test:integration` |
-| webapp | e2e (Playwright) | `pnpm --filter @video-processor/webapp test:e2e` |
+- Unit: domain + application（Gateway はモック、外部依存なし）
+- Integration: infrastructure（`INTEGRATION_TEST=true` + `DATABASE_URL` が未設定ならスキップ）
+- テストパス: `test/unit/`, `test/integration/`（ソース構造を mirror）
 
-## Tech Stack
+### 品質チェック
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14, React 18, shadcn/ui, Tailwind |
-| Backend | Express, Prisma, TypeScript |
-| AI | Gemini (via Vercel AI SDK) |
-| Video | FFmpeg |
-| Storage | Google Drive API |
-| Infra | Cloud Run, Cloud SQL, Terraform |
+`pnpm verify` は lint → prisma generate → typecheck → unit test → depcruise を順に実行する。
+コード変更後は必ず `pnpm verify` を実行して全パスすることを確認する。
 
-## Key Files
+### 詳細ルール
 
-- [docs/backend-architecture-guide.md](docs/backend-architecture-guide.md) - バックエンドアーキテクチャルール
-- [docs/backend-testing-guide.md](docs/backend-testing-guide.md) - テストガイドライン
-- [docs/shorts-gen-feature-spec.md](docs/shorts-gen-feature-spec.md) - ショート動画生成機能仕様
-- [biome.json](biome.json) - lint/format設定
+詳細な設計ルールは必要に応じて docs/ を読むこと:
 
-### clip-video機能の修正時に読むべきガイド
-
-| 修正対象 | 読むべきガイド |
-|----------|----------------|
-| バックエンド (API, UseCase, Repository等) | [docs/clip-video-backend-guide.md](docs/clip-video-backend-guide.md) |
-
-### shorts-gen機能の修正時に読むべきガイド
-
-| 修正対象 | 読むべきガイド |
-|----------|----------------|
-| バックエンド (API, UseCase, Repository等) | [docs/shorts-gen-backend-guide.md](docs/shorts-gen-backend-guide.md) |
-| フロントエンド (UI, 状態管理, Server Action等) | [docs/shorts-gen-frontend-guide.md](docs/shorts-gen-frontend-guide.md) |
-
-これらのガイドには、ディレクトリ構成・レイヤー間依存・主要な型・修正時のポイントがまとまっている。
-
-### clip-video機能の修正時に読むべきガイド
-
-| 修正対象 | 読むべきガイド |
-|----------|----------------|
-| フロントエンド (UI, 状態管理, Server Action等) | [docs/clip-video-frontend-guide.md](docs/clip-video-frontend-guide.md) |
-
-clip-videoのフロントエンドガイドには、パイプライン処理・ポーリング・クリップ抽出の仕組みがまとまっている。
+- docs/architecture.md — DDD 4層・依存ルール・命名規約
+- docs/frontend.md — フロントエンド規約（データフロー・UI スタック）
+- docs/infrastructure.md — インフラ規約（monorepo・デプロイ・DB・Stub パターン）
+- docs/quality.md — テスト方針・verify コマンド

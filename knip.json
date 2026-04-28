@@ -1,31 +1,10 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
-  "workspaces": {
-    "apps/backend": {
-      "project": ["src/**/*.ts"],
-      "ignore": [
-        "src/**/*.test.ts",
-        "test/**/*.ts",
-        "src/contexts/shared/infrastructure/clients/local-storage.client.ts",
-        "src/contexts/shared/infrastructure/clients/openai.client.ts",
-        "src/contexts/shorts-gen/infrastructure/clients/openai-agentic.client.ts"
-      ],
-      "ignoreDependencies": ["@ai-sdk/openai", "openai"],
-      "vitest": true
-    },
-    "apps/webapp": {
-      "entry": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "src/app/**/route.ts"],
-      "project": ["src/**/*.{ts,tsx}"],
-      "ignore": [
-        "src/**/*.test.{ts,tsx}",
-        "src/server/presentation/clip-video/actions/deleteVideo.ts",
-        "src/server/presentation/clip-video/actions/deleteClip.ts"
-      ],
-      "ignoreBinaries": ["dot"],
-      "playwright": false
-    },
-    "apps/shared": {
-      "project": ["types/**/*.ts"]
-    }
-  }
+	"$schema": "https://unpkg.com/knip@5/schema.json",
+	"ignoreDependencies": ["supabase", "vercel"],
+	"workspaces": {
+		"apps/webapp": {
+			"ignoreDependencies": ["postcss", "postcss-load-config"],
+			"ignore": ["src/frontend/components/ui/**"]
+		}
+	}
 }

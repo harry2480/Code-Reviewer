@@ -1,105 +1,74 @@
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
-  forbidden: [
-    // === UI layer isolation ===
-    {
-      name: 'ui-cannot-import-features',
-      severity: 'error',
-      comment: 'UI components must not depend on feature components',
-      from: { path: '^src/components/ui' },
-      to: { path: '^src/components/features' },
-    },
-    {
-      name: 'ui-cannot-import-server',
-      severity: 'error',
-      comment: 'UI components must not depend on server layer',
-      from: { path: '^src/components/ui' },
-      to: { path: '^src/server' },
-    },
-    {
-      name: 'ui-cannot-import-app',
-      severity: 'error',
-      comment: 'UI components must not depend on app layer',
-      from: { path: '^src/components/ui' },
-      to: { path: '^src/app' },
-    },
-
-    // === Feature isolation ===
-    {
-      name: 'feature-cannot-import-other-features',
-      severity: 'error',
-      comment: 'Features should not directly import from other features',
-      from: { path: '^src/components/features/([^/]+)/' },
-      to: {
-        path: '^src/components/features/([^/]+)/',
-        pathNot: '^src/components/features/$1/',
-      },
-    },
-    {
-      name: 'features-cannot-import-app',
-      severity: 'error',
-      comment: 'Feature components must not depend on app layer',
-      from: { path: '^src/components/features' },
-      to: { path: '^src/app' },
-    },
-
-    // === Server layer isolation ===
-    {
-      name: 'server-cannot-import-components',
-      severity: 'error',
-      comment: 'Server layer must not depend on components',
-      from: { path: '^src/server' },
-      to: { path: '^src/components' },
-    },
-    {
-      name: 'server-cannot-import-app',
-      severity: 'error',
-      comment: 'Server layer must not depend on app layer',
-      from: { path: '^src/server' },
-      to: { path: '^src/app' },
-    },
-    {
-      name: 'infrastructure-cannot-import-presentation',
-      severity: 'error',
-      comment: 'Infrastructure must not depend on presentation',
-      from: { path: '^src/server/infrastructure' },
-      to: { path: '^src/server/presentation' },
-    },
-
-    // === Lib isolation ===
-    {
-      name: 'lib-cannot-import-internal',
-      severity: 'error',
-      comment: 'Lib must not depend on internal modules',
-      from: { path: '^src/lib' },
-      to: { path: '^src/(app|components|server)' },
-    },
-
-    // === Common anti-patterns ===
-    {
-      name: 'no-circular',
-      severity: 'error',
-      comment: 'Circular dependencies are not allowed',
-      from: {},
-      to: { circular: true },
-    },
-  ],
-  options: {
-    doNotFollow: {
-      path: 'node_modules',
-    },
-    tsPreCompilationDeps: true,
-    tsConfig: {
-      fileName: './tsconfig.json',
-    },
-    enhancedResolveOptions: {
-      exportsFields: ['exports'],
-      conditionNames: ['import', 'require', 'node', 'default'],
-    },
-    reporterOptions: {
-      text: {
-        highlightFocused: true,
-      },
-    },
-  },
+	forbidden: [
+		// domain → 外部層 禁止
+		{
+			name: 'domain-no-depend-on-outer-layers',
+			severity: 'error',
+			comment: 'domain 層は application, infrastructure, presentation に依存してはならない',
+			from: { path: 'src/backend/domain/' },
+			to: {
+				path: [
+					'src/backend/application/',
+					'src/backend/infrastructure/',
+					'src/backend/presentation/',
+				],
+			},
+		},
+		// application → infrastructure 禁止
+		{
+			name: 'application-no-depend-on-infrastructure',
+			severity: 'error',
+			comment:
+				'application 層は infrastructure に直接依存してはならない（Gateway interface 経由のみ）',
+			from: { path: 'src/backend/application/' },
+			to: { path: 'src/backend/infrastructure/' },
+		},
+		// presentation/loaders, actions → domain 禁止
+		{
+			name: 'presentation-loaders-actions-no-depend-on-domain',
+			severity: 'error',
+			comment: 'presentation/loaders, actions は domain に直接依存してはならない',
+			from: { path: 'src/backend/presentation/(loaders|actions)/' },
+			to: { path: 'src/backend/domain/' },
+		},
+		// presentation/loaders, actions → infrastructure 禁止
+		{
+			name: 'presentation-loaders-actions-no-depend-on-infrastructure',
+			severity: 'error',
+			comment:
+				'presentation/loaders, actions は infrastructure に直接依存してはならない（composition 経由で解決）',
+			from: { path: 'src/backend/presentation/(loaders|actions)/' },
+			to: { path: 'src/backend/infrastructure/' },
+		},
+		// frontend → backend/presentation 以外禁止
+		{
+			name: 'frontend-only-depend-on-presentation',
+			severity: 'error',
+			comment: 'frontend は backend/presentation のみ参照可',
+			from: { path: '(src/app/|src/frontend/)' },
+			to: {
+				path: 'src/backend/',
+				pathNot: 'src/backend/presentation/',
+			},
+		},
+	],
+	options: {
+		doNotFollow: {
+			path: ['node_modules'],
+		},
+		tsPreCompilationDeps: true,
+		tsConfig: {
+			fileName: './tsconfig.json',
+		},
+		enhancedResolveOptions: {
+			exportsFields: ['exports'],
+			conditionNames: ['import', 'require', 'node', 'default'],
+		},
+		reporterOptions: {
+			text: {
+				highlightFocused: true,
+			},
+		},
+	},
 };

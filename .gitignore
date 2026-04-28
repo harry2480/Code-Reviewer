@@ -1,64 +1,24 @@
-# Dependencies
 node_modules/
-.pnpm-store/
-
-# Build outputs
+node_modules
 dist/
-build/
 .next/
-out/
-*.tsbuildinfo
-
-# Test coverage
-coverage/
-
-# Environment files
 .env
 .env.local
 .env.*.local
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-pnpm-debug.log*
-
-# Terraform
+*.tsbuildinfo
+.turbo/
+coverage/
+.vercel/
 .terraform/
-*.tfstate
-*.tfstate.*
-*.tfvars
-!*.tfvars.tpl
-.terraform.lock.hcl
-infrastructure/terraform/envs/**/.env
-
-# Prisma
-prisma/*.db
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-.cache/
-
-# Node.js compile cache
-node-compile-cache/
-
-# Playwright
-test-results/
 playwright-report/
-playwright/.cache/
+test-results/
+looper/output/
+.playwright-mcp/
+settings.local.json
 
-# Test fixture outputs
-apps/backend/test/fixtures/output/
-apps/backend/test/contexts/*/fixtures/output/
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+.vscode/settings.json
+.vercel

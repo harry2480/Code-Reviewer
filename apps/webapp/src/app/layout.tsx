@@ -1,63 +1,31 @@
-import { Video } from 'lucide-react';
+import { SidebarNav } from '@/frontend/components/sidebar-nav';
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
 
+const notoSansJP = Noto_Sans_JP({
+	subsets: ['latin'],
+	weight: ['400', '500', '600', '700'],
+	display: 'swap',
+	variable: '--font-noto-sans-jp',
+});
+
 export const metadata: Metadata = {
-  title: 'みらい動画スタジオ β',
-  description: 'チームみらいの切り抜き動画を探したり、素材を作成したりできるサイトです。',
+	title: 'Product Starter',
+	description: 'Claude Code でプロダクトを素早く構築するスターターキット',
 };
 
-function Header() {
-  return (
-    <header className="border-b">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-1.5 font-bold text-sm sm:text-xl shrink-0">
-          <Video className="h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
-          <span className="hidden sm:inline">みらい動画スタジオ β</span>
-          <span className="sm:hidden">みらい動画 β</span>
-        </Link>
-        <nav className="flex items-center gap-2 sm:gap-6">
-          <Link
-            href="/clips"
-            className="text-xs sm:text-sm font-bold hover:text-primary whitespace-nowrap"
-          >
-            切り抜きを探す
-          </Link>
-          <Link
-            href="/videos"
-            className="text-xs sm:text-sm font-bold hover:text-primary whitespace-nowrap"
-          >
-            動画から切り抜く
-          </Link>
-        </nav>
-      </div>
-    </header>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="border-t">
-      <div className="container mx-auto flex h-14 items-center justify-center px-4">
-        <p className="text-sm text-muted-foreground">みらい動画スタジオ β - Team Mirai Volunteer</p>
-      </div>
-    </footer>
-  );
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="ja">
-      <body className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
-        <Footer />
-      </body>
-    </html>
-  );
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+	return (
+		<html lang="ja" className={notoSansJP.variable}>
+			<body className="font-sans">
+				<div className="flex min-h-screen flex-col md:flex-row">
+					<SidebarNav />
+					<main className="flex-1 overflow-auto">
+						<div className="mx-auto max-w-3xl px-4 py-8 md:px-8">{children}</div>
+					</main>
+				</div>
+			</body>
+		</html>
+	);
 }
