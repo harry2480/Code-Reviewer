@@ -25,6 +25,22 @@ describe('ReviewEngineService.buildSystemPrompt', () => {
 		const prompt = service.buildSystemPrompt('readability');
 		expect(prompt).toContain('SOLID');
 	});
+
+	it('languageRules を渡すと基本プロンプトの末尾に付加される', () => {
+		const langRules = '\n\n## Language-Specific Rules\n### typescript\n- Use strict null checks';
+		const prompt = service.buildSystemPrompt('logic', langRules);
+		expect(prompt).toContain('Boundary value');
+		expect(prompt).toContain('Language-Specific Rules');
+		expect(prompt).toContain('strict null checks');
+		expect(prompt.endsWith(langRules)).toBe(true);
+	});
+
+	it('languageRules 未指定なら基本プロンプトのみを返す', () => {
+		const promptWithDefault = service.buildSystemPrompt('logic');
+		const promptWithEmpty = service.buildSystemPrompt('logic', '');
+		expect(promptWithDefault).toBe(promptWithEmpty);
+		expect(promptWithDefault).not.toContain('Language-Specific Rules');
+	});
 });
 
 describe('ReviewEngineService.buildUserPrompt', () => {

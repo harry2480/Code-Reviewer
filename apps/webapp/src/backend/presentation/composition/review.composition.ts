@@ -1,6 +1,7 @@
 import { ExecutePrReviewUseCase } from '../../application/usecases/execute-pr-review.usecase';
 import type { AiGateway } from '../../domain/gateways/ai.gateway';
 import type { GitHubApiGateway } from '../../domain/gateways/github-api.gateway';
+import { PolyglotExpertService } from '../../domain/services/polyglot-expert.service';
 import { ReviewEngineService } from '../../domain/services/review-engine.service';
 import { AnthropicAiGateway } from '../../infrastructure/adapters/anthropic-ai.adapter';
 import { GitHubApiAdapter } from '../../infrastructure/adapters/github-api.adapter';
@@ -31,10 +32,12 @@ export const gitHubApiGateway = createGitHubApiGateway();
 
 const aiGateway = createAiGateway();
 const reviewEngineService = new ReviewEngineService();
+const polyglotExpertService = new PolyglotExpertService();
 export const executeReviewUseCase = new ExecutePrReviewUseCase(
 	aiGateway,
 	gitHubApiGateway,
 	reviewCommentRepository,
 	budgetRepository,
 	reviewEngineService,
+	polyglotExpertService,
 );

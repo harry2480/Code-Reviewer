@@ -4,6 +4,7 @@ import { Budget } from '../../domain/models/budget.model';
 import type { ReviewPerspective } from '../../domain/models/review-comment.model';
 import type { BudgetRepository } from '../../domain/repositories/budget.repository';
 import type { ReviewCommentRepository } from '../../domain/repositories/review-comment.repository';
+import type { PolyglotExpertService } from '../../domain/services/polyglot-expert.service';
 import type { ReviewEngineService } from '../../domain/services/review-engine.service';
 
 const PERSPECTIVES: ReviewPerspective[] = ['logic', 'security', 'efficiency', 'readability'];
@@ -16,6 +17,7 @@ export class ExecutePrReviewUseCase {
 		private readonly reviewCommentRepository: ReviewCommentRepository,
 		private readonly budgetRepository: BudgetRepository,
 		private readonly reviewEngine: ReviewEngineService,
+		private readonly polyglotExpert: PolyglotExpertService,
 	) {}
 
 	async execute(owner: string, repo: string, prNumber: number): Promise<void> {
@@ -45,8 +47,11 @@ export class ExecutePrReviewUseCase {
 			this.github.getCommitMessages(owner, repo, prNumber),
 		]);
 
+		const experts = this.polyglotExpert.detectLanguages(diff);
+		const languageRules = this.polyglotExpert.buildLanguageRulesPrompt(experts);
+
 		for (const perspective of PERSPECTIVES) {
-			const systemPrompt = this.reviewEngine.buildSystemPrompt(perspective);
+			const systemPrompt = this.reviewEngine.buildSystemPrompt(perspective, languageRules);
 			const userPrompt = this.reviewEngine.buildUserPrompt(diff, commitMessages);
 
 			const raw = await this.ai.generate({
