@@ -59,8 +59,8 @@ Return ONLY valid JSON — no explanation text outside the array.`,
 export class ReviewEngineService {
 	readonly MAX_TOKENS = 2048;
 
-	buildSystemPrompt(perspective: ReviewPerspective): string {
-		return SYSTEM_PROMPTS[perspective];
+	buildSystemPrompt(perspective: ReviewPerspective, languageRules = ''): string {
+		return SYSTEM_PROMPTS[perspective] + languageRules;
 	}
 
 	buildUserPrompt(diff: string, commitMessages: string[]): string {
