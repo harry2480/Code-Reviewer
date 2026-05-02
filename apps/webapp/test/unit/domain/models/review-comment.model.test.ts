@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const validParams = {
 	id: 'comment-1',
+	sessionId: 'session-1',
 	filePath: 'src/utils/parser.ts',
 	lineNumber: 42,
 	perspective: 'security' as const,
@@ -83,6 +84,15 @@ describe('ReviewComment.create', () => {
 		if (result.success) {
 			expect(result.value.filePath).toBe('src/utils/parser.ts');
 			expect(result.value.body).toBe('問題があります');
+		}
+	});
+
+	it('sessionId が空の場合エラーを返す', () => {
+		const result = ReviewComment.create({ ...validParams, sessionId: '   ' });
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error).toBe('SESSION_ID_EMPTY');
 		}
 	});
 });
