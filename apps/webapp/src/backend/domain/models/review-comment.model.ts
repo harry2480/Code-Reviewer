@@ -8,7 +8,8 @@ type ReviewCommentError =
 	| 'BODY_EMPTY'
 	| 'LINE_NUMBER_INVALID'
 	| 'INVALID_PERSPECTIVE'
-	| 'INVALID_SEVERITY';
+	| 'INVALID_SEVERITY'
+	| 'SESSION_ID_EMPTY';
 
 const VALID_PERSPECTIVES: ReviewPerspective[] = ['logic', 'security', 'efficiency', 'readability'];
 const VALID_SEVERITIES: ReviewSeverity[] = ['info', 'warning', 'critical'];
@@ -16,6 +17,7 @@ const VALID_SEVERITIES: ReviewSeverity[] = ['info', 'warning', 'critical'];
 export class ReviewComment {
 	private constructor(
 		public readonly id: string,
+		public readonly sessionId: string,
 		public readonly filePath: string,
 		public readonly lineNumber: number,
 		public readonly perspective: ReviewPerspective,
@@ -30,6 +32,7 @@ export class ReviewComment {
 
 	static create(params: {
 		id: string;
+		sessionId: string;
 		filePath: string;
 		lineNumber: number;
 		perspective: string;
@@ -41,6 +44,11 @@ export class ReviewComment {
 		repo: string;
 		createdAt?: Date;
 	}): Result<ReviewComment, ReviewCommentError> {
+		const trimmedSessionId = params.sessionId.trim();
+		if (trimmedSessionId.length === 0) {
+			return { success: false, error: 'SESSION_ID_EMPTY' };
+		}
+
 		const trimmedFilePath = params.filePath.trim();
 		if (trimmedFilePath.length === 0) {
 			return { success: false, error: 'FILE_PATH_EMPTY' };
@@ -67,6 +75,7 @@ export class ReviewComment {
 			success: true,
 			value: new ReviewComment(
 				params.id,
+				trimmedSessionId,
 				trimmedFilePath,
 				params.lineNumber,
 				params.perspective as ReviewPerspective,
@@ -83,6 +92,7 @@ export class ReviewComment {
 
 	static reconstruct(params: {
 		id: string;
+		sessionId: string;
 		filePath: string;
 		lineNumber: number;
 		perspective: string;
@@ -96,6 +106,7 @@ export class ReviewComment {
 	}): ReviewComment {
 		return new ReviewComment(
 			params.id,
+			params.sessionId,
 			params.filePath,
 			params.lineNumber,
 			params.perspective as ReviewPerspective,

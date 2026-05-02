@@ -21,6 +21,7 @@ export class ExecutePrReviewUseCase {
 	) {}
 
 	async execute(owner: string, repo: string, prNumber: number): Promise<void> {
+		const sessionId = crypto.randomUUID();
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
@@ -60,7 +61,14 @@ export class ExecutePrReviewUseCase {
 				maxTokens: this.reviewEngine.MAX_TOKENS,
 			});
 
-			const parsed = this.reviewEngine.parseResponse(raw, perspective, owner, repo, prNumber);
+			const parsed = this.reviewEngine.parseResponse(
+				raw,
+				perspective,
+				owner,
+				repo,
+				prNumber,
+				sessionId,
+			);
 			if (!parsed.success) {
 				console.error(`Failed to parse ${perspective} response: ${parsed.error}`);
 				continue;

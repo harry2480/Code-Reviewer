@@ -77,6 +77,7 @@ export class ReviewEngineService {
 		owner: string,
 		repo: string,
 		prNumber: number,
+		sessionId: string,
 	): Result<ReviewComment[], string> {
 		let parsed: unknown;
 		try {
@@ -97,6 +98,7 @@ export class ReviewEngineService {
 		for (const item of parsed as RawComment[]) {
 			const result = ReviewComment.create({
 				id: crypto.randomUUID(),
+				sessionId,
 				filePath: typeof item.filePath === 'string' ? item.filePath : '',
 				lineNumber: typeof item.lineNumber === 'number' ? item.lineNumber : 0,
 				perspective,

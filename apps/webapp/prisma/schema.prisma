@@ -17,19 +17,45 @@ model Joke {
   @@map("jokes")
 }
 
+model ReviewSession {
+  id                 String          @id @default(cuid())
+  owner              String
+  repo               String
+  prNumber           Int             @map("pr_number")
+  prTitle            String          @map("pr_title")
+  prUrl              String          @map("pr_url")
+  status             String
+  detectedLanguages  String[]        @map("detected_languages")
+  logicScore         Int?            @map("logic_score")
+  securityScore      Int?            @map("security_score")
+  efficiencyScore    Int?            @map("efficiency_score")
+  readabilityScore   Int?            @map("readability_score")
+  totalTokens        Int             @default(0) @map("total_tokens")
+  analysisChain      String?         @map("analysis_chain")
+  durationMs         Int             @default(0) @map("duration_ms")
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz()
+  comments           ReviewComment[]
+
+  @@index([createdAt])
+  @@map("review_sessions")
+}
+
 model ReviewComment {
-  id            String   @id @default(cuid())
-  filePath      String   @map("file_path")
-  lineNumber    Int      @map("line_number")
+  id            String        @id @default(cuid())
+  sessionId     String        @map("session_id")
+  session       ReviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  filePath      String        @map("file_path")
+  lineNumber    Int           @map("line_number")
   perspective   String
   severity      String
   body          String
-  suggestedCode String?  @map("suggested_code")
-  prNumber      Int      @map("pr_number")
+  suggestedCode String?       @map("suggested_code")
+  prNumber      Int           @map("pr_number")
   owner         String
   repo          String
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz()
 
+  @@index([sessionId])
   @@map("review_comments")
 }
 
@@ -40,4 +66,12 @@ model Budget {
   usedUsd       Float    @default(0) @map("used_usd")
 
   @@map("budgets")
+}
+
+model LanguageRuleSetting {
+  language  String   @id
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("language_rule_settings")
 }

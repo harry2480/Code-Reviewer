@@ -64,7 +64,7 @@ describe('ReviewEngineService.buildUserPrompt', () => {
 
 describe('ReviewEngineService.parseResponse', () => {
 	const service = new ReviewEngineService();
-	const ctx = { owner: 'org', repo: 'repo', prNumber: 1 };
+	const ctx = { owner: 'org', repo: 'repo', prNumber: 1, sessionId: 'session-1' };
 
 	it('正常なJSONレスポンスからReviewCommentを返す', () => {
 		const raw = JSON.stringify([
@@ -76,18 +76,33 @@ describe('ReviewEngineService.parseResponse', () => {
 				suggestedCode: 'if (x !== null)',
 			},
 		]);
-		const result = service.parseResponse(raw, 'logic', ctx.owner, ctx.repo, ctx.prNumber);
+		const result = service.parseResponse(
+			raw,
+			'logic',
+			ctx.owner,
+			ctx.repo,
+			ctx.prNumber,
+			ctx.sessionId,
+		);
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.value).toHaveLength(1);
 			expect(result.value[0].filePath).toBe('src/index.ts');
 			expect(result.value[0].perspective).toBe('logic');
 			expect(result.value[0].severity).toBe('warning');
+			expect(result.value[0].sessionId).toBe('session-1');
 		}
 	});
 
 	it('空配列を含むレスポンスは空のコメントリストを返す', () => {
-		const result = service.parseResponse('[]', 'security', ctx.owner, ctx.repo, ctx.prNumber);
+		const result = service.parseResponse(
+			'[]',
+			'security',
+			ctx.owner,
+			ctx.repo,
+			ctx.prNumber,
+			ctx.sessionId,
+		);
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.value).toHaveLength(0);
@@ -101,6 +116,7 @@ describe('ReviewEngineService.parseResponse', () => {
 			ctx.owner,
 			ctx.repo,
 			ctx.prNumber,
+			ctx.sessionId,
 		);
 		expect(result.success).toBe(false);
 	});
@@ -112,6 +128,7 @@ describe('ReviewEngineService.parseResponse', () => {
 			ctx.owner,
 			ctx.repo,
 			ctx.prNumber,
+			ctx.sessionId,
 		);
 		expect(result.success).toBe(false);
 	});
@@ -122,7 +139,14 @@ describe('ReviewEngineService.parseResponse', () => {
 			{ filePath: '', lineNumber: 1, severity: 'info', body: 'Empty filePath' },
 			{ filePath: 'src/b.ts', lineNumber: -1, severity: 'info', body: 'Invalid line' },
 		]);
-		const result = service.parseResponse(raw, 'readability', ctx.owner, ctx.repo, ctx.prNumber);
+		const result = service.parseResponse(
+			raw,
+			'readability',
+			ctx.owner,
+			ctx.repo,
+			ctx.prNumber,
+			ctx.sessionId,
+		);
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.value).toHaveLength(1);
@@ -134,7 +158,14 @@ describe('ReviewEngineService.parseResponse', () => {
 		const raw = `Here are my findings:\n${JSON.stringify([
 			{ filePath: 'src/x.ts', lineNumber: 5, severity: 'critical', body: 'XSS risk' },
 		])}\nEnd of review.`;
-		const result = service.parseResponse(raw, 'security', ctx.owner, ctx.repo, ctx.prNumber);
+		const result = service.parseResponse(
+			raw,
+			'security',
+			ctx.owner,
+			ctx.repo,
+			ctx.prNumber,
+			ctx.sessionId,
+		);
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.value).toHaveLength(1);
