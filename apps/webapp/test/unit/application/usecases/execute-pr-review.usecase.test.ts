@@ -36,6 +36,8 @@ function createMocks() {
 	const reviewCommentRepository: ReviewCommentRepository = {
 		save: vi.fn().mockResolvedValue(undefined),
 		findByPr: vi.fn().mockResolvedValue([]),
+		findBySessionId: vi.fn().mockResolvedValue([]),
+		countByPerspectiveAndDateRange: vi.fn().mockResolvedValue(0),
 	};
 	const today = new Date();
 	today.setHours(0, 0, 0, 0);
