@@ -1,5 +1,6 @@
 import { ExecutePrReviewUseCase } from '@/backend/application/usecases/execute-pr-review.usecase';
 import type { AiGateway } from '@/backend/domain/gateways/ai.gateway';
+import type { ContextExtractorGateway } from '@/backend/domain/gateways/context-extractor.gateway';
 import type { GitHubApiGateway } from '@/backend/domain/gateways/github-api.gateway';
 import { Budget } from '@/backend/domain/models/budget.model';
 import type { ReviewComment } from '@/backend/domain/models/review-comment.model';
@@ -7,6 +8,8 @@ import type { BudgetRepository } from '@/backend/domain/repositories/budget.repo
 import type { ReviewCommentRepository } from '@/backend/domain/repositories/review-comment.repository';
 import { PolyglotExpertService } from '@/backend/domain/services/polyglot-expert.service';
 import { ReviewEngineService } from '@/backend/domain/services/review-engine.service';
+import type { RefinementOutcome } from '@/backend/domain/services/self-refinement.service';
+import type { SelfRefinementService } from '@/backend/domain/services/self-refinement.service';
 import { describe, expect, it, vi } from 'vitest';
 
 const VALID_COMMENT_JSON = JSON.stringify([
@@ -46,6 +49,20 @@ function createMocks() {
 	};
 	const reviewEngine = new ReviewEngineService();
 	const polyglotExpert = new PolyglotExpertService();
+	const contextExtractor: ContextExtractorGateway = {
+		extractPullRequestContext: vi.fn().mockResolvedValue({
+			recentCommitMessages: ['feat: context commit'],
+			callerReferences: [],
+		}),
+	};
+	const selfRefinement = {
+		refine: vi.fn().mockImplementation(
+			async (params: { candidateComments: ReviewComment[] }): Promise<RefinementOutcome> => ({
+				acceptedComments: params.candidateComments,
+				rejectedComments: [],
+			}),
+		),
+	} as unknown as SelfRefinementService;
 	return {
 		ai,
 		github,
@@ -53,6 +70,8 @@ function createMocks() {
 		budgetRepository,
 		reviewEngine,
 		polyglotExpert,
+		contextExtractor,
+		selfRefinement,
 	};
 }
 
@@ -64,6 +83,8 @@ function buildUseCase(mocks: ReturnType<typeof createMocks>) {
 		mocks.budgetRepository,
 		mocks.reviewEngine,
 		mocks.polyglotExpert,
+		mocks.contextExtractor,
+		mocks.selfRefinement,
 	);
 }
 
@@ -122,6 +143,7 @@ describe('ExecutePrReviewUseCase', () => {
 		await useCase.execute('org', 'repo', 1);
 
 		expect(mocks.ai.generate).toHaveBeenCalledTimes(4);
+		// 1視点失敗 → 候補は3件 → selfRefinement がそのまま返す → 保存3件
 		expect(mocks.reviewCommentRepository.save).toHaveBeenCalledTimes(3);
 	});
 
@@ -137,14 +159,19 @@ describe('ExecutePrReviewUseCase', () => {
 		expect(mocks.reviewCommentRepository.save).toHaveBeenCalledTimes(4);
 	});
 
-	it('diffとcommit取得時にowner/repo/prNumberが正しく渡される', async () => {
+	it('diffとPRコンテキスト取得時にowner/repo/prNumberが正しく渡される', async () => {
 		const mocks = createMocks();
 		const useCase = buildUseCase(mocks);
 
 		await useCase.execute('my-org', 'my-repo', 42);
 
 		expect(mocks.github.getPullRequestDiff).toHaveBeenCalledWith('my-org', 'my-repo', 42);
-		expect(mocks.github.getCommitMessages).toHaveBeenCalledWith('my-org', 'my-repo', 42);
+		expect(mocks.contextExtractor.extractPullRequestContext).toHaveBeenCalledWith({
+			owner: 'my-org',
+			repo: 'my-repo',
+			prNumber: 42,
+			diff: TS_DIFF,
+		});
 		expect(mocks.github.postReviewComment).toHaveBeenCalledWith(
 			'my-org',
 			'my-repo',
@@ -179,5 +206,79 @@ describe('ExecutePrReviewUseCase', () => {
 		const generateMock = mocks.ai.generate as ReturnType<typeof vi.fn>;
 		const firstCallArgs = generateMock.mock.calls[0][0] as { systemPrompt: string };
 		expect(firstCallArgs.systemPrompt).not.toContain('Language-Specific Rules');
+	});
+
+	it('contextExtractor のコミットメッセージが user prompt に含まれる', async () => {
+		const mocks = createMocks();
+		(
+			mocks.contextExtractor.extractPullRequestContext as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			recentCommitMessages: ['feat: add new feature', 'fix: bug fix'],
+			callerReferences: [],
+		});
+		const useCase = buildUseCase(mocks);
+
+		await useCase.execute('org', 'repo', 1);
+
+		const generateMock = mocks.ai.generate as ReturnType<typeof vi.fn>;
+		const firstCallArgs = generateMock.mock.calls[0][0] as { userPrompt: string };
+		expect(firstCallArgs.userPrompt).toContain('feat: add new feature');
+		expect(firstCallArgs.userPrompt).toContain('fix: bug fix');
+	});
+
+	it('callerReferences が存在する場合に user prompt に呼び出し元情報が含まれる', async () => {
+		const mocks = createMocks();
+		(
+			mocks.contextExtractor.extractPullRequestContext as ReturnType<typeof vi.fn>
+		).mockResolvedValue({
+			recentCommitMessages: [],
+			callerReferences: [
+				{ symbol: 'authenticateUser', filePath: 'src/auth.ts', lineNumber: 42, snippet: '...' },
+			],
+		});
+		const useCase = buildUseCase(mocks);
+
+		await useCase.execute('org', 'repo', 1);
+
+		const generateMock = mocks.ai.generate as ReturnType<typeof vi.fn>;
+		const firstCallArgs = generateMock.mock.calls[0][0] as { userPrompt: string };
+		expect(firstCallArgs.userPrompt).toContain('Call Sites');
+		expect(firstCallArgs.userPrompt).toContain('authenticateUser');
+	});
+
+	it('selfRefinement が一部 reject した場合、accept されたコメントのみ保存・投稿される', async () => {
+		const mocks = createMocks();
+		// AI が 4 視点で1件ずつ返す。selfRefinement は最初の1件だけ reject する
+		(mocks.selfRefinement.refine as ReturnType<typeof vi.fn>).mockImplementation(
+			async (params: { candidateComments: ReviewComment[] }): Promise<RefinementOutcome> => ({
+				acceptedComments: params.candidateComments.slice(1),
+				rejectedComments: [{ comment: params.candidateComments[0], reason: 'hallucination' }],
+			}),
+		);
+		const useCase = buildUseCase(mocks);
+
+		await useCase.execute('org', 'repo', 1);
+
+		// 4視点 - 1 reject = 3 save
+		expect(mocks.reviewCommentRepository.save).toHaveBeenCalledTimes(3);
+		expect(mocks.github.postReviewComment).toHaveBeenCalledTimes(3);
+	});
+
+	it('selfRefinement は全 perspective の候補をまとめて 1 回だけ呼ぶ', async () => {
+		const mocks = createMocks();
+		const useCase = buildUseCase(mocks);
+
+		await useCase.execute('org', 'repo', 1);
+
+		expect(mocks.selfRefinement.refine).toHaveBeenCalledTimes(1);
+	});
+
+	it('contextExtractor は 1 回だけ呼ばれる', async () => {
+		const mocks = createMocks();
+		const useCase = buildUseCase(mocks);
+
+		await useCase.execute('org', 'repo', 1);
+
+		expect(mocks.contextExtractor.extractPullRequestContext).toHaveBeenCalledTimes(1);
 	});
 });

@@ -1,3 +1,12 @@
+import type { PullRequestContext } from '../models/pull-request-context.model';
+
+export type { CallerReference, PullRequestContext } from '../models/pull-request-context.model';
+
 export interface ContextExtractorGateway {
-	extractContext(owner: string, repo: string, filePath: string): Promise<string>;
+	extractPullRequestContext(params: {
+		owner: string;
+		repo: string;
+		prNumber: number;
+		diff: string;
+	}): Promise<PullRequestContext>;
 }
