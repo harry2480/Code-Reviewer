@@ -16,3 +16,28 @@ model Joke {
 
   @@map("jokes")
 }
+
+model ReviewComment {
+  id            String   @id @default(cuid())
+  filePath      String   @map("file_path")
+  lineNumber    Int      @map("line_number")
+  perspective   String
+  severity      String
+  body          String
+  suggestedCode String?  @map("suggested_code")
+  prNumber      Int      @map("pr_number")
+  owner         String
+  repo          String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("review_comments")
+}
+
+model Budget {
+  id            String   @id @default(cuid())
+  date          DateTime @unique @db.Date
+  dailyLimitUsd Float    @map("daily_limit_usd")
+  usedUsd       Float    @default(0) @map("used_usd")
+
+  @@map("budgets")
+}
