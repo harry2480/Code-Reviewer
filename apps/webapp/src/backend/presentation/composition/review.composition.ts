@@ -1,11 +1,15 @@
 import { ExecutePrReviewUseCase } from '../../application/usecases/execute-pr-review.usecase';
 import type { AiGateway } from '../../domain/gateways/ai.gateway';
+import type { ContextExtractorGateway } from '../../domain/gateways/context-extractor.gateway';
 import type { GitHubApiGateway } from '../../domain/gateways/github-api.gateway';
 import { PolyglotExpertService } from '../../domain/services/polyglot-expert.service';
 import { ReviewEngineService } from '../../domain/services/review-engine.service';
+import { SelfRefinementService } from '../../domain/services/self-refinement.service';
 import { AnthropicAiGateway } from '../../infrastructure/adapters/anthropic-ai.adapter';
+import { ContextExtractorAdapter } from '../../infrastructure/adapters/context-extractor.adapter';
 import { GitHubApiAdapter } from '../../infrastructure/adapters/github-api.adapter';
 import { StubAiGateway } from '../../infrastructure/adapters/stub-ai.adapter';
+import { StubContextExtractorAdapter } from '../../infrastructure/adapters/stub-context-extractor.adapter';
 import { StubGitHubApiAdapter } from '../../infrastructure/adapters/stub-github-api.adapter';
 import { PrismaBudgetRepository } from '../../infrastructure/repositories/prisma-budget.repository';
 import { PrismaReviewCommentRepository } from '../../infrastructure/repositories/prisma-review-comment.repository';
@@ -26,6 +30,14 @@ function createGitHubApiGateway(): GitHubApiGateway {
 	return new StubGitHubApiAdapter();
 }
 
+function createContextExtractorGateway(): ContextExtractorGateway {
+	const token = process.env.GITHUB_TOKEN;
+	if (token) {
+		return new ContextExtractorAdapter(token);
+	}
+	return new StubContextExtractorAdapter();
+}
+
 export const reviewCommentRepository = new PrismaReviewCommentRepository();
 export const budgetRepository = new PrismaBudgetRepository();
 export const gitHubApiGateway = createGitHubApiGateway();
@@ -33,6 +45,9 @@ export const gitHubApiGateway = createGitHubApiGateway();
 const aiGateway = createAiGateway();
 const reviewEngineService = new ReviewEngineService();
 const polyglotExpertService = new PolyglotExpertService();
+const contextExtractorGateway = createContextExtractorGateway();
+const selfRefinementService = new SelfRefinementService(aiGateway);
+
 export const executeReviewUseCase = new ExecutePrReviewUseCase(
 	aiGateway,
 	gitHubApiGateway,
@@ -40,4 +55,6 @@ export const executeReviewUseCase = new ExecutePrReviewUseCase(
 	budgetRepository,
 	reviewEngineService,
 	polyglotExpertService,
+	contextExtractorGateway,
+	selfRefinementService,
 );

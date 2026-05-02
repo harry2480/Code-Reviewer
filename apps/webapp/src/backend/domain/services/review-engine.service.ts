@@ -1,3 +1,4 @@
+import type { CallerReference } from '../models/pull-request-context.model';
 import type { Result } from '../models/result.model';
 import { ReviewComment, type ReviewPerspective } from '../models/review-comment.model';
 
@@ -63,12 +64,20 @@ export class ReviewEngineService {
 		return SYSTEM_PROMPTS[perspective] + languageRules;
 	}
 
-	buildUserPrompt(diff: string, commitMessages: string[]): string {
+	buildUserPrompt(
+		diff: string,
+		commitMessages: string[],
+		callerReferences: CallerReference[] = [],
+	): string {
 		const commitsSection =
 			commitMessages.length > 0
 				? `## Commit Messages\n${commitMessages.map((m) => `- ${m}`).join('\n')}\n\n`
 				: '';
-		return `${commitsSection}## Diff\n\`\`\`diff\n${diff}\n\`\`\``;
+		const callersSection =
+			callerReferences.length > 0
+				? `## Call Sites of Changed Symbols\n${callerReferences.map((r) => `- \`${r.symbol}\` in \`${r.filePath}:${r.lineNumber}\``).join('\n')}\n\n`
+				: '';
+		return `${commitsSection}${callersSection}## Diff\n\`\`\`diff\n${diff}\n\`\`\``;
 	}
 
 	parseResponse(
