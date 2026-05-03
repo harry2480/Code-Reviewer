@@ -21,7 +21,6 @@ reviews:
   path_filters:
     - "apps/**"
     - "prisma/**"
-    - "supabase/**"
     - "docs/**"
     - ".github/**"
     - "!**/*.md"
