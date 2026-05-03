@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
 	async headers() {
 		return [{ source: '/(.*)', headers: securityHeaders }];
 	},
+	compress: true,
+	poweredByHeader: false,
+	experimental: {
+		optimizePackageImports: ['lucide-react', 'radix-ui'],
+	},
 };
 
 export default nextConfig;

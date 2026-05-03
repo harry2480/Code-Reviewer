@@ -1,4 +1,4 @@
-import type { AiGateway } from '../../domain/gateways/ai.gateway';
+import type { AiGateway, AiGenerateResult } from '../../domain/gateways/ai.gateway';
 
 /**
  * テスト・開発用の Stub 実装。
@@ -9,11 +9,24 @@ export class StubAiGateway implements AiGateway {
 		private readonly fixedResponse: string = 'これはスタブのジョークです。APIキーが設定されていないときに返されます。',
 	) {}
 
-	async generate(_params: {
+	async generate(params: {
 		systemPrompt: string;
 		userPrompt: string;
 		maxTokens: number;
-	}): Promise<string> {
-		return this.fixedResponse;
+	}): Promise<AiGenerateResult> {
+		const inputTokens = estimateTokens(`${params.systemPrompt}\n${params.userPrompt}`);
+		const outputTokens = estimateTokens(this.fixedResponse);
+		return {
+			text: this.fixedResponse,
+			usage: {
+				inputTokens,
+				outputTokens,
+				totalTokens: inputTokens + outputTokens,
+			},
+		};
 	}
+}
+
+function estimateTokens(text: string): number {
+	return Math.ceil(text.length / 4);
 }

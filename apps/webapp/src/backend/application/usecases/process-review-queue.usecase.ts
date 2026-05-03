@@ -4,7 +4,7 @@ import type {
 	ReviewQueueMessage,
 } from '../../domain/gateways/queue-service.gateway';
 import type { Result } from '../../domain/models/result.model';
-import type { ExecutePrReviewUseCase } from './execute-pr-review.usecase';
+import { BudgetExceededError, type ExecutePrReviewUseCase } from './execute-pr-review.usecase';
 
 export type ProcessQueueError = 'INVALID_SIGNATURE' | 'INVALID_MESSAGE' | 'REVIEW_FAILED';
 
@@ -51,15 +51,16 @@ export class ProcessReviewQueueUseCase {
 			await this.executePrReview.execute(message.owner, message.repo, message.prNumber);
 		} catch (err) {
 			console.error('Review execution failed', err);
+			const isBudget = err instanceof BudgetExceededError;
 			try {
 				await this.checksApi.updateCheckRun({
 					owner: message.owner,
 					repo: message.repo,
 					checkRunId: message.checkRunId,
 					status: 'completed',
-					conclusion: 'failure',
+					conclusion: isBudget ? 'neutral' : 'failure',
 					output: {
-						title: 'AI Review failed',
+						title: isBudget ? 'AI Review skipped: Budget Exceeded' : 'AI Review failed',
 						summary: err instanceof Error ? err.message : 'Unknown error',
 					},
 				});

@@ -9,51 +9,59 @@ type RawComment = {
 	suggestedCode?: unknown;
 };
 
+const RESPONSE_FORMAT = `Return ONLY a JSON array of findings (no surrounding text). If no issues found, return [].
+Each finding: {filePath: string, lineNumber: number (1-based), severity: "info"|"warning"|"critical", body: string, suggestedCode: string|null}.`;
+
+const PERSPECTIVE_FOCUS: Record<ReviewPerspective, { role: string; bullets: string[] }> = {
+	logic: {
+		role: 'senior software engineer reviewing for Logic',
+		bullets: [
+			'Boundary value errors (off-by-one, missing null/undefined checks)',
+			'Exception handling gaps (missing try/catch, unhandled promise rejections)',
+			'Breaking changes (API contract violations, removed functionality)',
+			'Logical correctness (wrong operators, unreachable code, incorrect conditions)',
+		],
+	},
+	security: {
+		role: 'senior security engineer reviewing for vulnerabilities',
+		bullets: [
+			'Secret/credential exposure (hardcoded API keys, passwords, tokens)',
+			'Injection vulnerabilities (SQL injection, XSS, command injection)',
+			'Insecure deserialization, path traversal, SSRF',
+			'AuthN/AuthZ bypass and IDOR patterns',
+		],
+	},
+	efficiency: {
+		role: 'senior performance engineer reviewing for efficiency',
+		bullets: [
+			'Algorithmic complexity (O(n²) nested loops, wrong data structures)',
+			'Redundant computations (missing memoization, repeated expensive ops)',
+			'Inefficient lookups (array.find in a loop instead of a Map)',
+			'Missing caching for repeated API calls or DB queries',
+		],
+	},
+	readability: {
+		role: 'senior software engineer reviewing for readability and maintainability',
+		bullets: [
+			'Naming conventions (unclear names, unexplained abbreviations)',
+			'SOLID violations (large classes, tight coupling, missing abstractions)',
+			'Code clarity (complex conditions, missing early returns)',
+			'Dead code, commented-out code, overly verbose implementations',
+		],
+	},
+};
+
+function buildPerspectivePrompt(perspective: ReviewPerspective): string {
+	const cfg = PERSPECTIVE_FOCUS[perspective];
+	const bullets = cfg.bullets.map((b) => `- ${b}`).join('\n');
+	return `You are a ${cfg.role}. Focus on:\n${bullets}\n\n${RESPONSE_FORMAT}`;
+}
+
 const SYSTEM_PROMPTS: Record<ReviewPerspective, string> = {
-	logic: `You are a senior software engineer reviewing a GitHub Pull Request from a Logic perspective. Your focus is on:
-- Boundary value errors (off-by-one, null/undefined checks missing)
-- Exception handling (missing try/catch, unhandled promise rejections)
-- Breaking changes (API contract violations, removed functionality)
-- Logical correctness (incorrect conditions, wrong operators, unreachable code)
-
-Review the provided diff and identify logic issues. Return ONLY a JSON array of findings.
-Each finding must have: filePath (string), lineNumber (number, 1-based), severity ("info"|"warning"|"critical"), body (string), suggestedCode (string|null).
-If no issues found, return [].
-Return ONLY valid JSON — no explanation text outside the array.`,
-
-	security: `You are a senior security engineer reviewing a GitHub Pull Request for vulnerabilities. Your focus is on:
-- Secret/credential exposure (hardcoded API keys, passwords, tokens)
-- Injection vulnerabilities (SQL injection, XSS, command injection)
-- Insecure deserialization, path traversal, SSRF
-- Authentication/authorization bypass patterns
-- Insecure direct object references
-
-Review the provided diff and identify security issues. Return ONLY a JSON array of findings.
-Each finding must have: filePath (string), lineNumber (number, 1-based), severity ("info"|"warning"|"critical"), body (string), suggestedCode (string|null).
-If no issues found, return [].
-Return ONLY valid JSON — no explanation text outside the array.`,
-
-	efficiency: `You are a senior performance engineer reviewing a GitHub Pull Request for efficiency issues. Your focus is on:
-- Algorithmic complexity (O(n²) nested loops, inefficient data structure choices)
-- Redundant computations (repeated expensive operations, missing memoization)
-- Inefficient patterns (array.find in a loop instead of a Map lookup)
-- Missing caching for repeated API calls or DB queries
-
-Review the provided diff and identify efficiency issues. Return ONLY a JSON array of findings.
-Each finding must have: filePath (string), lineNumber (number, 1-based), severity ("info"|"warning"|"critical"), body (string), suggestedCode (string|null).
-If no issues found, return [].
-Return ONLY valid JSON — no explanation text outside the array.`,
-
-	readability: `You are a senior software engineer reviewing a GitHub Pull Request for readability and maintainability. Your focus is on:
-- Naming conventions (unclear names, unexplained abbreviations)
-- SOLID principle violations (large classes, tight coupling, missing abstractions)
-- Code clarity (complex conditions that could be simplified, missing early returns)
-- Dead code, commented-out code, overly verbose implementations
-
-Review the provided diff and identify readability issues. Return ONLY a JSON array of findings.
-Each finding must have: filePath (string), lineNumber (number, 1-based), severity ("info"|"warning"|"critical"), body (string), suggestedCode (string|null).
-If no issues found, return [].
-Return ONLY valid JSON — no explanation text outside the array.`,
+	logic: buildPerspectivePrompt('logic'),
+	security: buildPerspectivePrompt('security'),
+	efficiency: buildPerspectivePrompt('efficiency'),
+	readability: buildPerspectivePrompt('readability'),
 };
 
 export class ReviewEngineService {

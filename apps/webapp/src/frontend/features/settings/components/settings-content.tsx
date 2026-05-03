@@ -2,6 +2,7 @@ import type { SettingsLoaderResult } from '@/backend/presentation/loaders/settin
 import { Badge } from '@/frontend/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/frontend/components/ui/card';
 import { ConnectionBadge } from '@/frontend/features/dashboard/components/connection-badge';
+import Link from 'next/link';
 import { BudgetLimitForm } from './budget-limit-form';
 import { LanguageRuleToggle } from './language-rule-toggle';
 

@@ -1,9 +1,12 @@
 import { GetDashboardStatsUseCase } from '../../application/usecases/get-dashboard-stats.usecase';
 import { GetReviewSessionDetailUseCase } from '../../application/usecases/get-review-session-detail.usecase';
+import { GetTokenConsumptionUseCase } from '../../application/usecases/get-token-consumption.usecase';
 import { ListLanguageRuleSettingsUseCase } from '../../application/usecases/list-language-rule-settings.usecase';
 import { ListReviewSessionsUseCase } from '../../application/usecases/list-review-sessions.usecase';
 import { ToggleLanguageRuleUseCase } from '../../application/usecases/toggle-language-rule.usecase';
 import { UpdateDailyBudgetLimitUseCase } from '../../application/usecases/update-daily-budget-limit.usecase';
+import { InMemoryTokenLedgerAdapter } from '../../infrastructure/adapters/in-memory-token-ledger.adapter';
+import { UpstashRedisTokenLedgerAdapter } from '../../infrastructure/adapters/upstash-redis-token-ledger.adapter';
 import { PrismaBudgetRepository } from '../../infrastructure/repositories/prisma-budget.repository';
 import { PrismaLanguageRuleSettingRepository } from '../../infrastructure/repositories/prisma-language-rule-setting.repository';
 import { PrismaReviewCommentRepository } from '../../infrastructure/repositories/prisma-review-comment.repository';
@@ -39,6 +42,11 @@ export const updateDailyBudgetLimitUseCase = new UpdateDailyBudgetLimitUseCase(
 	budgetRepository,
 	() => crypto.randomUUID(),
 );
+
+const tokenLedgerGateway =
+	UpstashRedisTokenLedgerAdapter.fromEnv() ?? new InMemoryTokenLedgerAdapter();
+
+export const getTokenConsumptionUseCase = new GetTokenConsumptionUseCase(tokenLedgerGateway);
 
 export function isGitHubAppConnected(): boolean {
 	return Boolean(process.env.GITHUB_APP_ID && process.env.GITHUB_APP_PRIVATE_KEY);
