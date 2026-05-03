@@ -1,103 +1,169 @@
-# スターターテンプレート
+# Code-Reviewer
 
-Claude Code や GitHub Copilot などの AI エージェントへの指示だけで高品質なプロダクトを構築できるスターターキットです。
-また、本リポジトリは**プロジェクト横断で利用可能なドキュメントテンプレート**や**AIエージェント向けの共通スキル・コマンド**を集約するハブとしても機能しています。
+GitHub Pull Request を自動レビューする AI エージェント。4つの観点（Logic、Security、Efficiency、Readability）から多角的なコードレビューを実施し、開発品質を向上させます。
 
-## ハーネスエンジニアリングとは
+## 機能
 
-このスターターキットは、**ハーネスエンジニアリング**の考え方に基づいて設計されています。
+### 4視点統合レビュー
 
-ハーネスエンジニアリングとは、AIエージェントが正しく力を発揮できるように情報やルールを整えることを指します。`CLAUDE.md` による共通ルールの注入、Skills（スラッシュコマンド）による定型作業の標準化、dependency-cruiser による依存方向の機械的な検証など、**複数のガードレールを多重に敷くことで、AIが書くコードの品質を構造的に担保**します。
+各 PR に対して以下の4つの観点からレビューコメントを自動生成：
 
-これにより、AIエージェントを複数セッション並列で回しても、設計が崩れにくい開発が可能になります。
+- **Logic**: 機能要件の正当性、エッジケース対応、ビジネスロジックの妥当性
+- **Security**: セキュリティ脆弱性、認証認可、API キー管理、OWASP Top 10
+- **Efficiency**: パフォーマンス改善、N+1 クエリ、メモリリーク、アルゴリズム最適化
+- **Readability**: コード可読性、命名規約、型安全性、テスト可能性
 
-詳しい背景と実践事例については、以下の記事をご覧ください。
+### 言語対応
 
-### このスターターキットに組み込まれたガードレール
+PR に含まれるファイルの拡張子を自動検出し、言語別の専門知識を動的に注入：
 
-| ガードレール | 仕組み |
+- TypeScript / JavaScript
+- Python
+- Go
+- Rust
+- PHP
+- Swift
+
+### 予算管理
+
+AI API 呼び出しのコスト管理を統合：
+
+- **トークン消費ログ**: Upstash Redis に時系列記録（7日間保持）
+- **ハード制限**: 日次予算上限を超過した場合、自動停止
+- **ダッシュボード**: `/settings/budget-details` で消費状況を可視化
+
+### ダッシュボード
+
+レビュー履歴と統計情報をリアルタイム表示：
+
+- 本日のレビュー件数・AI 消費コスト・トークン数
+- 視点別の内訳表示
+- 30日間の消費トレンド グラフ
+
+### GitHub App 統合
+
+GitHub App として PR Webhook に反応：
+
+- PR 作成時に自動レビュー実行
+- Checks API で CI ステータスとして表示
+- 非同期キュー（Upstash QStash）でスケーラブルな処理
+
+## 技術スタック
+
+| レイヤー | 技術 |
 |---|---|
-| **設計ルールの注入** | `CLAUDE.md` や `docs/templates/` 配下にアーキテクチャ・命名規約・依存ルールを明文化し、AIにコンテキストを供給 |
-| **共通Skillsとプロンプト** | `.claude/skills/` や `.claude/commands/` にプロジェクト横断の定型作業コマンドを集約し、品質のばらつきを抑制 |
-| **依存方向の機械的検証** | dependency-cruiser で「domain は外部に依存しない」等のルールを CI で自動チェック |
-| **レイヤー別テスト戦略** | domain/application は Unit テスト、infrastructure は Integration テスト。テスト方針もドキュメント化 |
-| **統合CI/CD** | `.github/workflows/` に集約されたワークフローにより、型チェックやlint、テストを一元的に自動化 |
+| **フロントエンド** | Next.js 15 App Router, React 19, shadcn/ui, Tailwind CSS |
+| **バックエンド** | TypeScript, Node.js (Vercel Serverless Functions) |
+| **データベース** | PostgreSQL (Vercel Postgres), Prisma ORM |
+| **AI エンジン** | Anthropic Claude API (prompt caching 有効) |
+| **非同期処理** | Upstash QStash |
+| **状態管理** | Upstash Redis |
+| **認証** | GitHub OAuth 2.0 |
+| **品質管理** | Vitest, Biome, dependency-cruiser, TypeScript |
 
-## テンプレートとドキュメント管理
+## アーキテクチャ
 
-本リポジトリの `docs/` には、新しいプロジェクトを立ち上げる際や新しい機能を設計する際にそのまま使える汎用テンプレートが用意されています。
-AIに「`docs/` の〇〇を使って新しい機能の要件定義をして」と指示するだけで、ベストプラクティスに基づいた仕様書が生成されます。
+DDD 4層アーキテクチャで実装：
 
-**収録テンプレートの例:**
-- アーキテクチャ設計規約
-- フロントエンド規約
-- スタイルガイド
-- 品質チェック・テスト規約
-- AIチャット機能要件定義 / 実装計画
-- AIエージェント運用ガイド
-
-## 技術スタック (標準構成)
-
-- Next.js 15 (App Router) + Vercel
-- Supabase PostgreSQL + Prisma
-- shadcn/ui + Tailwind CSS
-- vitest + dependency-cruiser
-- Biome (lint/format)
-- AIツール: Vercel AI SDK, Streamdown
-
-## はじめかた
-
-### セットアップ
-
-AIエージェント（Claude Code 等）を開き、`/init-pj` を実行してください。前提ツールのインストールからDB構築まで自動で行います。
-
-## 使い方
-
-AIに自然言語で指示するだけで、テンプレートやルールに沿った機能追加が可能です。
-
-**コマンド例:**
 ```
-「ユーザー管理機能を作って」
-「お気に入り機能を追加して」
-「/articles ページを作って」
-「○○テーブルにstatusカラムを追加して」
-「このエラーを直して: [エラーメッセージ]」
+backend/
+├── domain/               # ビジネスロジック（外部依存なし）
+│   ├── models/          # ドメインモデル
+│   ├── services/        # ドメインサービス（PolyglotExpert、ReviewEngine等）
+│   ├── gateways/        # 外部依存インターフェース
+│   └── repositories/    # データ永続化インターフェース
+├── application/         # ユースケース
+│   └── usecases/        # ExecutePrReview、ProcessQueue等
+├── infrastructure/      # 外部実装
+│   ├── adapters/        # Gateway実装（Anthropic、GitHub API等）
+│   ├── repositories/    # Repository実装
+│   └── db/              # DB接続
+└── presentation/        # DI組み立て、API、Server Actions
+    ├── composition/     # 依存性注入
+    ├── loaders/         # データ読み込み
+    └── actions/         # Server Actions
 ```
 
-## 開発コマンド一覧
+## セットアップ
 
-| コマンド | 内容 |
-|---|---|
-| `pnpm dev` | 開発サーバー起動 |
-| `pnpm verify` | 品質チェック（lint → typecheck → test → depcruise） |
-| `pnpm test:unit` | Unit テスト実行 |
-| `pnpm lint:fix` | 自動フォーマット・Lint適用 |
-| `pnpm db:migrate` | DBマイグレーション |
-| `pnpm knip` | 未使用コード検出 |
+### 前提条件
 
-## プロジェクト構成
+- Node.js 20+
+- pnpm 10+
+- Docker（PostgreSQL ローカル開発用）
 
-```text
-starter-templete/
-├── .claude/                # プロジェクト横断のAI SkillsとCommands
-├── .github/workflows/      # 統合CI/CDワークフロー（型チェック、ビルド、テスト等）
-├── docs/                   # プロジェクト横断で使えるドキュメント・定義テンプレート
-└── apps/webapp/src/        # メインアプリケーション
-    ├── app/                # ページ（Next.js App Router）
-    ├── backend/            # バックエンド全体
-    │   ├── application/    # ユースケース
-    │   ├── domain/         # ビジネスルール（モデル、インターフェース）
-    │   ├── infrastructure/ # DB・外部API実装
-    │   └── presentation/   # DI組み立て、データ取得、Server Actions
-    ├── frontend/           # フロントエンド・UI全体
-    └── lib/                # 共有ライブラリ
-```
-
-## サンプル実装について
-
-初期状態では Claude API を使ったジョーク生成機能がサンプルとして含まれています。
-`ANTHROPIC_API_KEY` を設定すると API 経由で動作し、未設定の場合は Stub（固定値）で動作します。
+### インストール
 
 ```bash
-echo 'ANTHROPIC_API_KEY="your-api-key"' >> apps/webapp/.env.local
+# 依存関係インストール
+pnpm install
+
+# 環境変数設定
+cp apps/webapp/.env.example apps/webapp/.env.local
+# 以下を .env.local に設定：
+# ANTHROPIC_API_KEY=sk-...
+# DATABASE_URL=postgresql://...
+# UPSTASH_REDIS_REST_URL=https://...
+# UPSTASH_REDIS_REST_TOKEN=...
+# UPSTASH_QSTASH_URL=https://...
+# UPSTASH_QSTASH_TOKEN=...
+# GITHUB_OAUTH_CLIENT_ID=...
+# GITHUB_OAUTH_CLIENT_SECRET=...
 ```
+
+### データベース初期化
+
+```bash
+pnpm db:migrate  # マイグレーション実行（Budget, ReviewSession, ReviewComment, LanguageRuleSetting テーブル作成）
+```
+
+### 開発サーバー起動
+
+```bash
+pnpm dev
+```
+
+`http://localhost:3000` で起動します。
+
+## GitHub App 登録
+
+1. GitHub Settings → Developer settings → GitHub Apps → New GitHub App
+2. 以下を設定：
+   - Webhook URL: `https://your-domain.vercel.app/api/webhooks/github`
+   - Webhook secret: 任意
+   - Permissions:
+     - `pull_requests`: read, write
+     - `checks`: read, write
+     - `contents`: read
+   - Events: `pull_request`
+
+3. Private key を生成し、環境変数に設定
+
+## 開発コマンド
+
+| コマンド | 説明 |
+|---|---|
+| `pnpm dev` | 開発サーバー起動 |
+| `pnpm build` | ビルド |
+| `pnpm verify` | 品質チェック実行（lint, typecheck, test, depcruise） |
+| `pnpm test:unit` | Unit テスト実行 |
+| `pnpm test:integration` | Integration テスト実行 |
+| `pnpm lint` | Lint チェック |
+| `pnpm lint:fix` | Lint 自動修正 |
+| `pnpm typecheck` | TypeScript 型チェック |
+| `pnpm knip` | 未使用コード検出 |
+| `pnpm db:migrate` | DB マイグレーション |
+| `pnpm depcruise` | 依存関係検証（DDD4層構造） |
+
+## ドキュメント
+
+- [`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md) — 開発環境セットアップガイド
+- [`docs/API.md`](docs/API.md) — Webhook・API エンドポイント仕様
+- [`docs/OPERATIONS_GUIDE.md`](docs/OPERATIONS_GUIDE.md) — 運用・監視ガイド
+- [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) — エンドユーザー向けガイド（日本語）
+- [`AGENTS.md`](AGENTS.md) — AI エージェント向けルール・ガイドライン
+- [`docs/アーキテクチャ.md`](docs/アーキテクチャ.md) — DDD4層設計詳細
+
+## ライセンス
+
+MIT

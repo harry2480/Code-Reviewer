@@ -8,7 +8,7 @@ import {
 	SheetTrigger,
 } from '@/frontend/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { History, Home, Laugh, LayoutDashboard, Menu, Settings } from 'lucide-react';
+import { History, Home, LayoutDashboard, Menu, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -18,7 +18,6 @@ const navItems = [
 	{ href: '/dashboard', label: 'ダッシュボード', icon: LayoutDashboard },
 	{ href: '/review-history', label: 'レビュー履歴', icon: History },
 	{ href: '/settings', label: '設定', icon: Settings },
-	{ href: '/jokes', label: 'ジョーク', icon: Laugh },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
