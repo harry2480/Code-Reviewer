@@ -1,8 +1,8 @@
-import { Octokit } from '@octokit/rest';
 import {
 	GitHubChecksApiAdapter,
 	StubChecksApiAdapter,
 } from '@/backend/infrastructure/adapters/github-checks-api.adapter';
+import { Octokit } from '@octokit/rest';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@octokit/rest', () => {
@@ -16,8 +16,7 @@ function buildOctokit(checksOverrides: {
 	create?: ReturnType<typeof vi.fn>;
 	update?: ReturnType<typeof vi.fn>;
 }) {
-	const create =
-		checksOverrides.create ?? vi.fn().mockResolvedValue({ data: { id: 12345 } });
+	const create = checksOverrides.create ?? vi.fn().mockResolvedValue({ data: { id: 12345 } });
 	const update = checksOverrides.update ?? vi.fn().mockResolvedValue({ data: {} });
 	OctokitMock.mockImplementation(() => ({
 		checks: { create, update },

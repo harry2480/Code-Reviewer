@@ -57,19 +57,16 @@ export function TokenLedgerTable({ entries }: Props) {
 		<Card>
 			<CardHeader className="flex flex-row items-center justify-between">
 				<CardTitle className="text-base">本日のトークン消費ログ</CardTitle>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={handleExport}
-					disabled={entries.length === 0}
-				>
+				<Button variant="outline" size="sm" onClick={handleExport} disabled={entries.length === 0}>
 					<Download className="mr-2 h-4 w-4" />
 					CSV エクスポート
 				</Button>
 			</CardHeader>
 			<CardContent>
 				{entries.length === 0 ? (
-					<p className="text-sm text-muted-foreground">本日のトークン消費はまだ記録されていません。</p>
+					<p className="text-sm text-muted-foreground">
+						本日のトークン消費はまだ記録されていません。
+					</p>
 				) : (
 					<div className="overflow-x-auto">
 						<Table>

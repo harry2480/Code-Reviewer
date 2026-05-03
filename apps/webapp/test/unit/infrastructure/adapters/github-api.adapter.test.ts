@@ -1,6 +1,6 @@
-import { Octokit } from '@octokit/rest';
-import { GitHubApiAdapter } from '@/backend/infrastructure/adapters/github-api.adapter';
 import { ReviewComment } from '@/backend/domain/models/review-comment.model';
+import { GitHubApiAdapter } from '@/backend/infrastructure/adapters/github-api.adapter';
+import { Octokit } from '@octokit/rest';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@octokit/rest', () => {

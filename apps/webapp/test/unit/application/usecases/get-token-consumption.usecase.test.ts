@@ -2,7 +2,9 @@ import { GetTokenConsumptionUseCase } from '@/backend/application/usecases/get-t
 import { InMemoryTokenLedgerAdapter } from '@/backend/infrastructure/adapters/in-memory-token-ledger.adapter';
 import { describe, expect, it } from 'vitest';
 
-function entry(overrides: Partial<{ timestamp: string; perspective: string; costUsd: number }> = {}) {
+function entry(
+	overrides: Partial<{ timestamp: string; perspective: string; costUsd: number }> = {},
+) {
 	return {
 		timestamp: '2026-05-03T12:00:00.000Z',
 		sessionId: 's1',

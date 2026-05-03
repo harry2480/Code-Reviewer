@@ -1,5 +1,5 @@
-import { getTokenConsumptionUseCase } from '../composition/review-frontend.composition';
 import type { GetTokenConsumptionResult } from '../../application/usecases/get-token-consumption.usecase';
+import { getTokenConsumptionUseCase } from '../composition/review-frontend.composition';
 
 export type TokenConsumptionLoaderResult = {
 	today: GetTokenConsumptionResult['today'];

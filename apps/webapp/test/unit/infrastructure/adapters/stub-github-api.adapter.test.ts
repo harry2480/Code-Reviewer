@@ -1,5 +1,5 @@
-import { StubGitHubApiAdapter } from '@/backend/infrastructure/adapters/stub-github-api.adapter';
 import { ReviewComment } from '@/backend/domain/models/review-comment.model';
+import { StubGitHubApiAdapter } from '@/backend/infrastructure/adapters/stub-github-api.adapter';
 import { describe, expect, it } from 'vitest';
 
 function buildComment() {

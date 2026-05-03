@@ -15,8 +15,8 @@ export function BudgetAlert({ usedUsd, dailyLimitUsd }: Props) {
 				<div>
 					<p className="text-sm font-semibold">本日の予算上限を超過しました</p>
 					<p className="mt-1 text-xs">
-						${usedUsd.toFixed(3)} / ${dailyLimitUsd.toFixed(2)} (
-						{Math.round(percent)}%)。新規 PR レビューは自動的にスキップされます。
+						${usedUsd.toFixed(3)} / ${dailyLimitUsd.toFixed(2)} ({Math.round(percent)}%)。新規 PR
+						レビューは自動的にスキップされます。
 					</p>
 				</div>
 			</div>
@@ -30,8 +30,8 @@ export function BudgetAlert({ usedUsd, dailyLimitUsd }: Props) {
 				<div>
 					<p className="text-sm font-semibold">本日の予算上限に近づいています</p>
 					<p className="mt-1 text-xs">
-						${usedUsd.toFixed(3)} / ${dailyLimitUsd.toFixed(2)} (
-						{Math.round(percent)}%)。残り予算にご注意ください。
+						${usedUsd.toFixed(3)} / ${dailyLimitUsd.toFixed(2)} ({Math.round(percent)}
+						%)。残り予算にご注意ください。
 					</p>
 				</div>
 			</div>
