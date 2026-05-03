@@ -1,6 +1,6 @@
 {
 	"$schema": "https://unpkg.com/knip@5/schema.json",
-	"ignoreDependencies": ["supabase", "vercel"],
+	"ignoreDependencies": ["vercel"],
 	"workspaces": {
 		"apps/webapp": {
 			"ignoreDependencies": ["postcss", "postcss-load-config"],
