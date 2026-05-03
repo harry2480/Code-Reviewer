@@ -4,7 +4,7 @@ GitHub Pull Request を自動レビューする AI エージェント。4つの�
 
 ## 機能
 
-### 🎯 4視点統合レビュー
+### 4視点統合レビュー
 
 各 PR に対して以下の4つの観点からレビューコメントを自動生成：
 
@@ -13,7 +13,7 @@ GitHub Pull Request を自動レビューする AI エージェント。4つの�
 - **Efficiency**: パフォーマンス改善、N+1 クエリ、メモリリーク、アルゴリズム最適化
 - **Readability**: コード可読性、命名規約、型安全性、テスト可能性
 
-### 🌐 言語対応
+### 言語対応
 
 PR に含まれるファイルの拡張子を自動検出し、言語別の専門知識を動的に注入：
 
@@ -24,7 +24,7 @@ PR に含まれるファイルの拡張子を自動検出し、言語別の専�
 - PHP
 - Swift
 
-### 💰 予算管理
+### 予算管理
 
 AI API 呼び出しのコスト管理を統合：
 
@@ -32,7 +32,7 @@ AI API 呼び出しのコスト管理を統合：
 - **ハード制限**: 日次予算上限を超過した場合、自動停止
 - **ダッシュボード**: `/settings/budget-details` で消費状況を可視化
 
-### 📊 ダッシュボード
+### ダッシュボード
 
 レビュー履歴と統計情報をリアルタイム表示：
 
@@ -40,7 +40,7 @@ AI API 呼び出しのコスト管理を統合：
 - 視点別の内訳表示
 - 30日間の消費トレンド グラフ
 
-### 🔗 GitHub App 統合
+### GitHub App 統合
 
 GitHub App として PR Webhook に反応：
 
@@ -114,8 +114,7 @@ cp apps/webapp/.env.example apps/webapp/.env.local
 ### データベース初期化
 
 ```bash
-pnpm db:migrate  # マイグレーション実行
-pnpm db:seed     # サンプルデータ投入（オプション）
+pnpm db:migrate  # マイグレーション実行（Budget, ReviewSession, ReviewComment, LanguageRuleSetting テーブル作成）
 ```
 
 ### 開発サーバー起動
@@ -156,18 +155,6 @@ pnpm dev
 | `pnpm db:migrate` | DB マイグレーション |
 | `pnpm depcruise` | 依存関係検証（DDD4層構造） |
 
-## テストカバレッジ
-
-Phase 7 完了時点の実装：
-
-| レイヤー | カバレッジ |
-|---|---|
-| Domain Models | 100% |
-| Domain Services | 98.64% |
-| Application UseCases | 95.57% |
-| Infrastructure Adapters | 87.57% |
-| **合計テスト数** | **179 tests** |
-
 ## ドキュメント
 
 - [`docs/SETUP_GUIDE.md`](docs/SETUP_GUIDE.md) — 開発環境セットアップガイド
@@ -180,8 +167,3 @@ Phase 7 完了時点の実装：
 ## ライセンス
 
 MIT
-
-## 開発チーム
-
-- プロジェクト管理: Claude Code
-- AI レビューエンジン: Anthropic Claude

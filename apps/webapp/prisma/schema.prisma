@@ -8,15 +8,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model Joke {
-  id        String   @id @default(cuid())
-  theme     String
-  content   String
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
-
-  @@map("jokes")
-}
-
 model ReviewSession {
   id                 String          @id @default(cuid())
   owner              String
