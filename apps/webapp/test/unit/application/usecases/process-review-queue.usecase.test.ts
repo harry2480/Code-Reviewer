@@ -1,4 +1,7 @@
-import type { ExecutePrReviewUseCase } from '@/backend/application/usecases/execute-pr-review.usecase';
+import {
+	BudgetExceededError,
+	type ExecutePrReviewUseCase,
+} from '@/backend/application/usecases/execute-pr-review.usecase';
 import { ProcessReviewQueueUseCase } from '@/backend/application/usecases/process-review-queue.usecase';
 import type { ChecksApiGateway } from '@/backend/domain/gateways/checks-api.gateway';
 import type { QueueServiceGateway } from '@/backend/domain/gateways/queue-service.gateway';
@@ -105,5 +108,63 @@ describe('ProcessReviewQueueUseCase', () => {
 		if (!result.success) expect(result.error).toBe('REVIEW_FAILED');
 		const calls = (checks.updateCheckRun as ReturnType<typeof vi.fn>).mock.calls;
 		expect(calls[1][0].conclusion).toBe('failure');
+		expect(calls[1][0].output.title).toBe('AI Review failed');
+	});
+
+	it('予算超過 (BudgetExceededError) 時は conclusion: neutral で Budget Exceeded と表示する', async () => {
+		const exec = createExecutePrReview();
+		(exec.execute as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+			new BudgetExceededError(5.5, 5.0),
+		);
+		const checks = createChecksApi();
+		const useCase = new ProcessReviewQueueUseCase(exec, checks, createQueue());
+
+		const result = await useCase.execute({
+			rawBody: '{}',
+			signature: 'sig',
+			parsedMessage: validMessage,
+		});
+
+		expect(result.success).toBe(false);
+		const calls = (checks.updateCheckRun as ReturnType<typeof vi.fn>).mock.calls;
+		expect(calls[1][0].conclusion).toBe('neutral');
+		expect(calls[1][0].output.title).toBe('AI Review skipped: Budget Exceeded');
+	});
+
+	it('checks API への in_progress 更新失敗でもレビュー実行は継続する', async () => {
+		const exec = createExecutePrReview();
+		const checks = createChecksApi();
+		(checks.updateCheckRun as ReturnType<typeof vi.fn>)
+			.mockRejectedValueOnce(new Error('checks failed'))
+			.mockResolvedValue(undefined);
+
+		const useCase = new ProcessReviewQueueUseCase(exec, checks, createQueue());
+
+		const result = await useCase.execute({
+			rawBody: '{}',
+			signature: 'sig',
+			parsedMessage: validMessage,
+		});
+
+		expect(result.success).toBe(true);
+		expect(exec.execute).toHaveBeenCalledOnce();
+	});
+
+	it('completed への更新失敗でも success 扱い (ベストエフォート)', async () => {
+		const exec = createExecutePrReview();
+		const checks = createChecksApi();
+		(checks.updateCheckRun as ReturnType<typeof vi.fn>)
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('checks failed'));
+
+		const useCase = new ProcessReviewQueueUseCase(exec, checks, createQueue());
+
+		const result = await useCase.execute({
+			rawBody: '{}',
+			signature: 'sig',
+			parsedMessage: validMessage,
+		});
+
+		expect(result.success).toBe(true);
 	});
 });

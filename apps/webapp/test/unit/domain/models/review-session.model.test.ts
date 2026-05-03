@@ -37,6 +37,24 @@ describe('ReviewSession.create', () => {
 		if (!result.success) expect(result.error).toBe('OWNER_EMPTY');
 	});
 
+	it('repo が空の場合エラーを返す', () => {
+		const result = ReviewSession.create({ ...validParams, repo: '  ' });
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error).toBe('REPO_EMPTY');
+	});
+
+	it('prTitle が空の場合エラーを返す', () => {
+		const result = ReviewSession.create({ ...validParams, prTitle: '  ' });
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error).toBe('PR_TITLE_EMPTY');
+	});
+
+	it('prUrl が空の場合エラーを返す', () => {
+		const result = ReviewSession.create({ ...validParams, prUrl: '  ' });
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error).toBe('PR_URL_EMPTY');
+	});
+
 	it('prNumber が 0 以下の場合エラーを返す', () => {
 		const result = ReviewSession.create({ ...validParams, prNumber: 0 });
 		expect(result.success).toBe(false);

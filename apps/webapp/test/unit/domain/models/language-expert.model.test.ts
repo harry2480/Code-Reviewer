@@ -1,4 +1,7 @@
-import { LanguageExpert } from '@/backend/domain/models/language-expert.model';
+import {
+	LanguageExpert,
+	type SupportedLanguage,
+} from '@/backend/domain/models/language-expert.model';
 import { describe, expect, it } from 'vitest';
 
 describe('LanguageExpert.fromExtension', () => {
@@ -35,4 +38,15 @@ describe('LanguageExpert.fromExtension', () => {
 		const expert = LanguageExpert.fromExtension('ts');
 		expect(expert?.rules.length).toBeGreaterThan(0);
 	});
+});
+
+describe('LanguageExpert.fromLanguage', () => {
+	it.each<SupportedLanguage>(['typescript', 'python', 'swift', 'php', 'go', 'rust'])(
+		'%s の expert インスタンスを返す (拡張子経由なし)',
+		(language) => {
+			const expert = LanguageExpert.fromLanguage(language);
+			expect(expert.language).toBe(language);
+			expect(expert.rules.length).toBeGreaterThan(0);
+		},
+	);
 });

@@ -133,6 +133,32 @@ describe('ReviewEngineService.parseResponse', () => {
 		expect(result.success).toBe(false);
 	});
 
+	it('JSON 形式だが構文エラーは INVALID_JSON を返す', () => {
+		const result = service.parseResponse(
+			'[{abc: nope}]',
+			'logic',
+			ctx.owner,
+			ctx.repo,
+			ctx.prNumber,
+			ctx.sessionId,
+		);
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error).toBe('INVALID_JSON');
+	});
+
+	it('NO_JSON_ARRAY_FOUND: 配列リテラルがない場合', () => {
+		const result = service.parseResponse(
+			'plain text response',
+			'logic',
+			ctx.owner,
+			ctx.repo,
+			ctx.prNumber,
+			ctx.sessionId,
+		);
+		expect(result.success).toBe(false);
+		if (!result.success) expect(result.error).toBe('NO_JSON_ARRAY_FOUND');
+	});
+
 	it('バリデーション失敗のコメントはスキップされ残りは返す', () => {
 		const raw = JSON.stringify([
 			{ filePath: 'src/a.ts', lineNumber: 1, severity: 'info', body: 'Valid comment' },

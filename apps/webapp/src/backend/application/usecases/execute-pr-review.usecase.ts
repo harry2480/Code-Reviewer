@@ -4,11 +4,24 @@ import { Budget } from '../../domain/models/budget.model';
 import type { ReviewPerspective } from '../../domain/models/review-comment.model';
 import type { BudgetRepository } from '../../domain/repositories/budget.repository';
 import type { ReviewCommentRepository } from '../../domain/repositories/review-comment.repository';
+import type { BudgetManagerService } from '../../domain/services/budget-manager.service';
 import type { PolyglotExpertService } from '../../domain/services/polyglot-expert.service';
 import type { ReviewEngineService } from '../../domain/services/review-engine.service';
+import type { LogTokenConsumptionUseCase } from './log-token-consumption.usecase';
 
 const PERSPECTIVES: ReviewPerspective[] = ['logic', 'security', 'efficiency', 'readability'];
 const DEFAULT_DAILY_LIMIT_USD = 5;
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+
+export class BudgetExceededError extends Error {
+	constructor(
+		public readonly usedUsd: number,
+		public readonly dailyLimitUsd: number,
+	) {
+		super(`Daily budget exceeded: ${usedUsd.toFixed(4)} USD / ${dailyLimitUsd.toFixed(2)} USD`);
+		this.name = 'BudgetExceededError';
+	}
+}
 
 export class ExecutePrReviewUseCase {
 	constructor(
@@ -18,6 +31,9 @@ export class ExecutePrReviewUseCase {
 		private readonly budgetRepository: BudgetRepository,
 		private readonly reviewEngine: ReviewEngineService,
 		private readonly polyglotExpert: PolyglotExpertService,
+		private readonly budgetManager: BudgetManagerService,
+		private readonly logTokenConsumption: LogTokenConsumptionUseCase,
+		private readonly modelName: string = DEFAULT_MODEL,
 	) {}
 
 	async execute(owner: string, repo: string, prNumber: number): Promise<void> {
@@ -40,7 +56,7 @@ export class ExecutePrReviewUseCase {
 		}
 
 		if (budget.isExceeded()) {
-			throw new Error('Daily budget exceeded');
+			throw new BudgetExceededError(budget.usedUsd, budget.dailyLimitUsd);
 		}
 
 		const [diff, commitMessages] = await Promise.all([
@@ -50,19 +66,40 @@ export class ExecutePrReviewUseCase {
 
 		const experts = this.polyglotExpert.detectLanguages(diff);
 		const languageRules = this.polyglotExpert.buildLanguageRulesPrompt(experts);
+		const prId = `${owner}/${repo}#${prNumber}`;
 
 		for (const perspective of PERSPECTIVES) {
+			const current = await this.budgetRepository.findByDate(today);
+			if (current?.isExceeded()) {
+				console.warn(
+					`Budget exceeded mid-review (${current.usedUsd.toFixed(4)}/${current.dailyLimitUsd.toFixed(2)} USD). Aborting remaining perspectives.`,
+				);
+				throw new BudgetExceededError(current.usedUsd, current.dailyLimitUsd);
+			}
+
 			const systemPrompt = this.reviewEngine.buildSystemPrompt(perspective, languageRules);
 			const userPrompt = this.reviewEngine.buildUserPrompt(diff, commitMessages);
 
-			const raw = await this.ai.generate({
+			const generated = await this.ai.generate({
 				systemPrompt,
 				userPrompt,
 				maxTokens: this.reviewEngine.MAX_TOKENS,
 			});
 
+			try {
+				await this.logTokenConsumption.execute({
+					sessionId,
+					prId,
+					model: this.modelName,
+					perspective,
+					usage: generated.usage,
+				});
+			} catch (err) {
+				console.error(`Failed to log token consumption for ${perspective}: ${err}`);
+			}
+
 			const parsed = this.reviewEngine.parseResponse(
-				raw,
+				generated.text,
 				perspective,
 				owner,
 				repo,

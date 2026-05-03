@@ -9,7 +9,7 @@ export class GenerateJokeUseCase {
 	) {}
 
 	async execute(theme: string): Promise<Joke> {
-		const content = await this.aiGateway.generate({
+		const generated = await this.aiGateway.generate({
 			systemPrompt:
 				'あなたは面白いジョークを考えるコメディアンです。与えられたテーマに関する短いジョークを1つ日本語で生成してください。ジョークのみを返してください。',
 			userPrompt: `テーマ: ${theme}`,
@@ -17,7 +17,7 @@ export class GenerateJokeUseCase {
 		});
 
 		const id = crypto.randomUUID();
-		const result = Joke.create({ id, theme, content });
+		const result = Joke.create({ id, theme, content: generated.text });
 
 		if (!result.success) {
 			throw new Error(`Failed to create joke: ${result.error}`);
