@@ -19,8 +19,8 @@
 	"dependencies": {
 		"@ai-sdk/anthropic": "^3.0.58",
 		"@octokit/rest": "^22.0.1",
+		"@openrouter/ai-sdk-provider": "^2.9.0",
 		"@prisma/client": "^6",
-		"@upstash/qstash": "^2.7.20",
 		"@upstash/redis": "^1.37.0",
 		"ai": "^6.0.116",
 		"class-variance-authority": "^0.7.1",
