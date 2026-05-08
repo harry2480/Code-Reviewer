@@ -1,5 +1,6 @@
 import { ExecutePrReviewUseCase } from '@/backend/application/usecases/execute-pr-review.usecase';
 import { LogTokenConsumptionUseCase } from '@/backend/application/usecases/log-token-consumption.usecase';
+import type { AiRouter } from '@/backend/domain/gateways/ai-router.gateway';
 import type { AiGateway } from '@/backend/domain/gateways/ai.gateway';
 import type { GitHubApiGateway } from '@/backend/domain/gateways/github-api.gateway';
 import type { TokenLedgerGateway } from '@/backend/domain/gateways/token-ledger.gateway';
@@ -35,8 +36,11 @@ function aiResult(text: string) {
 }
 
 function createMocks() {
-	const ai: AiGateway = {
+	const aiGateway: AiGateway = {
 		generate: vi.fn().mockResolvedValue(aiResult(VALID_COMMENT_JSON)),
+	};
+	const aiRouter: AiRouter = {
+		forPerspective: vi.fn().mockReturnValue(aiGateway),
 	};
 	const github: GitHubApiGateway = {
 		getPullRequestDiff: vi.fn().mockResolvedValue(TS_DIFF),
@@ -80,7 +84,8 @@ function createMocks() {
 		() => 'log-id',
 	);
 	return {
-		ai,
+		aiGateway,
+		aiRouter,
 		github,
 		reviewCommentRepository,
 		budgetRepository,
@@ -92,9 +97,9 @@ function createMocks() {
 	};
 }
 
-function buildUseCase(mocks: ReturnType<typeof createMocks>) {
+function buildUseCase(mocks: ReturnType<typeof createMocks>, modelName = 'stub') {
 	return new ExecutePrReviewUseCase(
-		mocks.ai,
+		mocks.aiRouter,
 		mocks.github,
 		mocks.reviewCommentRepository,
 		mocks.budgetRepository,
@@ -102,7 +107,8 @@ function buildUseCase(mocks: ReturnType<typeof createMocks>) {
 		mocks.polyglotExpert,
 		mocks.budgetManager,
 		mocks.logTokenConsumption,
-		'stub',
+		modelName,
+		0, // perspectiveDelayMs: テストではスリープ無効化
 	);
 }
 
@@ -113,10 +119,24 @@ describe('ExecutePrReviewUseCase', () => {
 
 		await useCase.execute('org', 'repo', 1);
 
-		expect(mocks.ai.generate).toHaveBeenCalledTimes(4);
+		expect(mocks.aiGateway.generate).toHaveBeenCalledTimes(4);
+		expect(mocks.aiRouter.forPerspective).toHaveBeenCalledTimes(4);
 		expect(mocks.reviewCommentRepository.save).toHaveBeenCalledTimes(4);
 		expect(mocks.github.postReviewComment).toHaveBeenCalledTimes(4);
 		expect(mocks.tokenLedger.append).toHaveBeenCalledTimes(4);
+	});
+
+	it('AiRouter には perspective が渡される', async () => {
+		const mocks = createMocks();
+		const useCase = buildUseCase(mocks);
+
+		await useCase.execute('org', 'repo', 1);
+
+		const forPerspectiveMock = mocks.aiRouter.forPerspective as ReturnType<typeof vi.fn>;
+		expect(forPerspectiveMock).toHaveBeenNthCalledWith(1, 'logic');
+		expect(forPerspectiveMock).toHaveBeenNthCalledWith(2, 'security');
+		expect(forPerspectiveMock).toHaveBeenNthCalledWith(3, 'efficiency');
+		expect(forPerspectiveMock).toHaveBeenNthCalledWith(4, 'readability');
 	});
 
 	it('予算超過時はエラーをthrowする', async () => {
@@ -136,7 +156,7 @@ describe('ExecutePrReviewUseCase', () => {
 		const useCase = buildUseCase(mocks);
 
 		await expect(useCase.execute('org', 'repo', 1)).rejects.toThrow('Daily budget exceeded');
-		expect(mocks.ai.generate).not.toHaveBeenCalled();
+		expect(mocks.aiGateway.generate).not.toHaveBeenCalled();
 	});
 
 	it('budgetがnullの場合は新規作成して続行する', async () => {
@@ -148,12 +168,12 @@ describe('ExecutePrReviewUseCase', () => {
 		await useCase.execute('org', 'repo', 1);
 
 		expect(mocks.budgetRepository.save).toHaveBeenCalled();
-		expect(mocks.ai.generate).toHaveBeenCalledTimes(4);
+		expect(mocks.aiGateway.generate).toHaveBeenCalledTimes(4);
 	});
 
 	it('1視点のAIレスポンスがパース失敗でも残り3視点は継続する', async () => {
 		const mocks = createMocks();
-		(mocks.ai.generate as ReturnType<typeof vi.fn>)
+		(mocks.aiGateway.generate as ReturnType<typeof vi.fn>)
 			.mockResolvedValueOnce(aiResult('not json at all'))
 			.mockResolvedValue(aiResult(VALID_COMMENT_JSON));
 
@@ -161,7 +181,7 @@ describe('ExecutePrReviewUseCase', () => {
 
 		await useCase.execute('org', 'repo', 1);
 
-		expect(mocks.ai.generate).toHaveBeenCalledTimes(4);
+		expect(mocks.aiGateway.generate).toHaveBeenCalledTimes(4);
 		expect(mocks.reviewCommentRepository.save).toHaveBeenCalledTimes(3);
 	});
 
@@ -201,7 +221,7 @@ describe('ExecutePrReviewUseCase', () => {
 		await useCase.execute('org', 'repo', 1);
 
 		expect(detectSpy).toHaveBeenCalledWith(TS_DIFF);
-		const generateMock = mocks.ai.generate as ReturnType<typeof vi.fn>;
+		const generateMock = mocks.aiGateway.generate as ReturnType<typeof vi.fn>;
 		const firstCallArgs = generateMock.mock.calls[0][0] as { systemPrompt: string };
 		expect(firstCallArgs.systemPrompt).toContain('Language-Specific Rules');
 		expect(firstCallArgs.systemPrompt).toContain('### typescript');
@@ -216,7 +236,7 @@ describe('ExecutePrReviewUseCase', () => {
 
 		await useCase.execute('org', 'repo', 1);
 
-		const generateMock = mocks.ai.generate as ReturnType<typeof vi.fn>;
+		const generateMock = mocks.aiGateway.generate as ReturnType<typeof vi.fn>;
 		const firstCallArgs = generateMock.mock.calls[0][0] as { systemPrompt: string };
 		expect(firstCallArgs.systemPrompt).not.toContain('Language-Specific Rules');
 	});
@@ -235,24 +255,14 @@ describe('ExecutePrReviewUseCase', () => {
 			},
 		);
 		// 1 視点目の AI 呼び出し後、確実に予算超過する高コスト model を仮定
-		(mocks.ai.generate as ReturnType<typeof vi.fn>).mockResolvedValue({
+		(mocks.aiGateway.generate as ReturnType<typeof vi.fn>).mockResolvedValue({
 			text: VALID_COMMENT_JSON,
 			usage: { inputTokens: 10_000_000, outputTokens: 10_000_000, totalTokens: 20_000_000 },
 		});
 
-		const useCase = new ExecutePrReviewUseCase(
-			mocks.ai,
-			mocks.github,
-			mocks.reviewCommentRepository,
-			mocks.budgetRepository,
-			mocks.reviewEngine,
-			mocks.polyglotExpert,
-			mocks.budgetManager,
-			mocks.logTokenConsumption,
-			'claude-haiku-4-5-20251001',
-		);
+		const useCase = buildUseCase(mocks, 'claude-haiku-4-5-20251001');
 
 		await expect(useCase.execute('org', 'repo', 1)).rejects.toThrow('Daily budget exceeded');
-		expect(mocks.ai.generate).toHaveBeenCalledTimes(1);
+		expect(mocks.aiGateway.generate).toHaveBeenCalledTimes(1);
 	});
 });

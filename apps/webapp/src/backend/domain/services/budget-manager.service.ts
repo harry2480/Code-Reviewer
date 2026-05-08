@@ -9,6 +9,13 @@ const PRICE_TABLE: Record<string, { inputUsdPerMTokens: number; outputUsdPerMTok
 	'claude-sonnet-4-6': { inputUsdPerMTokens: 3.0, outputUsdPerMTokens: 15.0 },
 	'claude-opus-4-7': { inputUsdPerMTokens: 15.0, outputUsdPerMTokens: 75.0 },
 	stub: { inputUsdPerMTokens: 0, outputUsdPerMTokens: 0 },
+	// Tier 1: OpenRouter 無料モデル (コスト $0)
+	'qwen/qwen3-coder-480b-a22b:free': { inputUsdPerMTokens: 0, outputUsdPerMTokens: 0 },
+	'deepseek/deepseek-r1:free': { inputUsdPerMTokens: 0, outputUsdPerMTokens: 0 },
+	'meta-llama/llama-3.3-70b-instruct:free': { inputUsdPerMTokens: 0, outputUsdPerMTokens: 0 },
+	'google/gemma-3-12b-it:free': { inputUsdPerMTokens: 0, outputUsdPerMTokens: 0 },
+	// Tier 2: OpenRouter 格安モデル
+	'qwen/qwen-2.5-7b-instruct': { inputUsdPerMTokens: 0.1, outputUsdPerMTokens: 0.3 },
 };
 
 const DEFAULT_PRICE = { inputUsdPerMTokens: 1.0, outputUsdPerMTokens: 5.0 };

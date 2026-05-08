@@ -1,4 +1,4 @@
-import type { AiGateway } from '../../domain/gateways/ai.gateway';
+import type { AiRouter } from '../../domain/gateways/ai-router.gateway';
 import type { GitHubApiGateway } from '../../domain/gateways/github-api.gateway';
 import { Budget } from '../../domain/models/budget.model';
 import type { ReviewPerspective } from '../../domain/models/review-comment.model';
@@ -12,6 +12,8 @@ import type { LogTokenConsumptionUseCase } from './log-token-consumption.usecase
 const PERSPECTIVES: ReviewPerspective[] = ['logic', 'security', 'efficiency', 'readability'];
 const DEFAULT_DAILY_LIMIT_USD = 5;
 const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+// 無料モデルのレート制限対策: perspective 間に挿入する待機時間 (ms)
+const DEFAULT_PERSPECTIVE_DELAY_MS = 2000;
 
 export class BudgetExceededError extends Error {
 	constructor(
@@ -25,7 +27,7 @@ export class BudgetExceededError extends Error {
 
 export class ExecutePrReviewUseCase {
 	constructor(
-		private readonly ai: AiGateway,
+		private readonly ai: AiRouter,
 		private readonly github: GitHubApiGateway,
 		private readonly reviewCommentRepository: ReviewCommentRepository,
 		private readonly budgetRepository: BudgetRepository,
@@ -34,6 +36,7 @@ export class ExecutePrReviewUseCase {
 		private readonly budgetManager: BudgetManagerService,
 		private readonly logTokenConsumption: LogTokenConsumptionUseCase,
 		private readonly modelName: string = DEFAULT_MODEL,
+		private readonly perspectiveDelayMs: number = DEFAULT_PERSPECTIVE_DELAY_MS,
 	) {}
 
 	async execute(owner: string, repo: string, prNumber: number): Promise<void> {
@@ -68,7 +71,7 @@ export class ExecutePrReviewUseCase {
 		const languageRules = this.polyglotExpert.buildLanguageRulesPrompt(experts);
 		const prId = `${owner}/${repo}#${prNumber}`;
 
-		for (const perspective of PERSPECTIVES) {
+		for (const [index, perspective] of PERSPECTIVES.entries()) {
 			const current = await this.budgetRepository.findByDate(today);
 			if (current?.isExceeded()) {
 				console.warn(
@@ -77,10 +80,15 @@ export class ExecutePrReviewUseCase {
 				throw new BudgetExceededError(current.usedUsd, current.dailyLimitUsd);
 			}
 
+			// 無料モデルのレート制限対策: 2回目以降の perspective 呼び出し前に待機
+			if (index > 0 && this.perspectiveDelayMs > 0) {
+				await new Promise((resolve) => setTimeout(resolve, this.perspectiveDelayMs));
+			}
+
 			const systemPrompt = this.reviewEngine.buildSystemPrompt(perspective, languageRules);
 			const userPrompt = this.reviewEngine.buildUserPrompt(diff, commitMessages);
 
-			const generated = await this.ai.generate({
+			const generated = await this.ai.forPerspective(perspective).generate({
 				systemPrompt,
 				userPrompt,
 				maxTokens: this.reviewEngine.MAX_TOKENS,
