@@ -67,43 +67,60 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
+	let reviewSucceeded = false;
+	let reviewError: unknown;
 	try {
 		await executeReviewUseCase.execute(owner, repo, prNumber);
-
-		await checksApi.updateCheckRun({
-			owner,
-			repo,
-			checkRunId,
-			status: 'completed',
-			conclusion: 'success',
-			output: {
-				title: 'AI Review completed',
-				summary: 'Review comments have been posted.',
-			},
-		});
+		reviewSucceeded = true;
 	} catch (err) {
 		console.error('Review execution failed:', err);
-		const isBudget = err instanceof BudgetExceededError;
+		reviewError = err;
+	}
 
+	// レビュー本体の終了確定: SIGTERM ハンドラを解除して二重更新を防ぐ
+	const finalCheckRunId = checkRunId;
+	checkRunId = undefined;
+	process.removeListener('SIGTERM', handleSigterm);
+
+	if (reviewSucceeded) {
+		// 成功時の Check Run 更新は独立した try/catch で囲み、API 失敗で全体を落とさない
 		try {
 			await checksApi.updateCheckRun({
 				owner,
 				repo,
-				checkRunId,
+				checkRunId: finalCheckRunId,
 				status: 'completed',
-				conclusion: isBudget ? 'neutral' : 'failure',
+				conclusion: 'success',
 				output: {
-					title: isBudget ? 'AI Review skipped: Budget Exceeded' : 'AI Review failed',
-					summary: err instanceof Error ? err.message : 'Unknown error',
+					title: 'AI Review completed',
+					summary: 'Review comments have been posted.',
 				},
 			});
 		} catch (updateErr) {
-			console.error('Failed to update check run on failure:', updateErr);
+			console.error('Failed to update check run on success:', updateErr);
 		}
-
-		// 予算超過は想定内なので exit(0)、それ以外はジョブを失敗させる
-		if (!isBudget) process.exit(1);
+		return;
 	}
+
+	const isBudget = reviewError instanceof BudgetExceededError;
+	try {
+		await checksApi.updateCheckRun({
+			owner,
+			repo,
+			checkRunId: finalCheckRunId,
+			status: 'completed',
+			conclusion: isBudget ? 'neutral' : 'failure',
+			output: {
+				title: isBudget ? 'AI Review skipped: Budget Exceeded' : 'AI Review failed',
+				summary: reviewError instanceof Error ? reviewError.message : 'Unknown error',
+			},
+		});
+	} catch (updateErr) {
+		console.error('Failed to update check run on failure:', updateErr);
+	}
+
+	// 予算超過は想定内なので exit(0)、それ以外はジョブを失敗させる
+	if (!isBudget) process.exit(1);
 }
 
 main().catch((err) => {
